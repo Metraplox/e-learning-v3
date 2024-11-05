@@ -1,0 +1,1059 @@
+Documentación del Proyecto - api-gateway
+Generado el: 2024-11-05 03:05:38
+================================================================================
+
+Archivo: api-gateway\.env
+--------------------------------------------------------------------------------
+# Server
+PORT=4000
+NODE_ENV=production
+
+# JWT
+JWT_SECRET=your-super-secret-jwt-key
+JWT_EXPIRATION=1d
+
+# Microservices
+USERS_SERVICE_URL=http://users-ms:3000/graphql
+COURSES_SERVICE_URL=http://courses-ms:3000/graphql
+
+# RabbitMQ
+RABBITMQ_URL=amqp://rabbitmq:5672
+RABBITMQ_QUEUE=main_queue
+
+================================================================================
+
+Archivo: api-gateway\.eslintrc.js
+--------------------------------------------------------------------------------
+module.exports = {
+  parser: '@typescript-eslint/parser',
+  parserOptions: {
+    project: 'tsconfig.json',
+    tsconfigRootDir: __dirname,
+    sourceType: 'module',
+  },
+  plugins: ['@typescript-eslint/eslint-plugin'],
+  extends: [
+    'plugin:@typescript-eslint/recommended',
+    'plugin:prettier/recommended',
+  ],
+  root: true,
+  env: {
+    node: true,
+    jest: true,
+  },
+  ignorePatterns: ['.eslintrc.js'],
+  rules: {
+    '@typescript-eslint/interface-name-prefix': 'off',
+    '@typescript-eslint/explicit-function-return-type': 'off',
+    '@typescript-eslint/explicit-module-boundary-types': 'off',
+    '@typescript-eslint/no-explicit-any': 'off',
+  },
+};
+
+
+================================================================================
+
+Archivo: api-gateway\.gitignore
+--------------------------------------------------------------------------------
+# compiled output
+/dist
+/node_modules
+/build
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+
+# Tests
+/coverage
+/.nyc_output
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# temp directory
+.temp
+.tmp
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+
+================================================================================
+
+Archivo: api-gateway\.prettierrc
+--------------------------------------------------------------------------------
+{
+  "singleQuote": true,
+  "trailingComma": "all"
+}
+
+================================================================================
+
+Archivo: api-gateway\Dockerfile
+--------------------------------------------------------------------------------
+# Stage 1: Dependencies and Build
+FROM node:18.17-alpine AS builder
+
+# Set working directory
+WORKDIR /usr/src/app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies including 'devDependencies'
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Generate prisma client and build application
+RUN npm run build
+
+# Stage 2: Production
+FROM node:18.17-alpine AS production
+
+# Set working directory
+WORKDIR /usr/src/app
+
+# Copy package files
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm ci --only=production
+
+# Copy built application from builder stage
+COPY --from=builder /usr/src/app/dist ./dist
+
+# Copy necessary configuration files
+COPY --from=builder /usr/src/app/.env ./.env
+
+# Set environment variables
+ENV NODE_ENV=production
+
+# Expose the port the app runs on
+EXPOSE 4000
+
+# Command to run the application
+CMD ["node", "dist/main"]
+
+================================================================================
+
+Archivo: api-gateway\README.md
+--------------------------------------------------------------------------------
+<p align="center">
+  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+</p>
+
+[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
+[circleci-url]: https://circleci.com/gh/nestjs/nest
+
+  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
+    <p align="center">
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
+<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
+<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
+<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
+<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
+<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
+  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
+    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
+  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
+</p>
+  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
+  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+
+## Description
+
+[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+
+## Project setup
+
+```bash
+$ npm install
+```
+
+## Compile and run the project
+
+```bash
+# development
+$ npm run start
+
+# watch mode
+$ npm run start:dev
+
+# production mode
+$ npm run start:prod
+```
+
+## Run tests
+
+```bash
+# unit tests
+$ npm run test
+
+# e2e tests
+$ npm run test:e2e
+
+# test coverage
+$ npm run test:cov
+```
+
+## Deployment
+
+When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+
+If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+
+```bash
+$ npm install -g mau
+$ mau deploy
+```
+
+With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+
+## Resources
+
+Check out a few resources that may come in handy when working with NestJS:
+
+- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
+- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
+- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
+- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
+- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
+- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
+- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
+- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+
+## Support
+
+Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+
+## Stay in touch
+
+- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
+- Website - [https://nestjs.com](https://nestjs.com/)
+- Twitter - [@nestframework](https://twitter.com/nestframework)
+
+## License
+
+Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+
+================================================================================
+
+Archivo: api-gateway\nest-cli.json
+--------------------------------------------------------------------------------
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "src",
+  "compilerOptions": {
+    "deleteOutDir": true
+  }
+}
+
+
+================================================================================
+
+Archivo: api-gateway\package.json
+--------------------------------------------------------------------------------
+{
+  "name": "api-gateway",
+  "version": "0.0.1",
+  "description": "",
+  "author": "",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "nest build",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
+    "start:prod": "node dist/main",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "test:e2e": "jest --config ./test/jest-e2e.json"
+  },
+  "dependencies": {
+    "@apollo/gateway": "^2.9.3",
+    "@apollo/server": "^4.11.2",
+    "@nestjs/apollo": "^12.2.1",
+    "@nestjs/common": "^10.0.0",
+    "@nestjs/config": "^3.3.0",
+    "@nestjs/core": "^10.0.0",
+    "@nestjs/graphql": "^12.2.1",
+    "@nestjs/jwt": "^10.2.0",
+    "@nestjs/microservices": "^10.4.6",
+    "@nestjs/passport": "^10.0.3",
+    "@nestjs/platform-express": "^10.0.0",
+    "amqp-connection-manager": "^4.1.14",
+    "amqplib": "^0.10.4",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "graphql": "^16.9.0",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.0.0",
+    "@nestjs/schematics": "^10.0.0",
+    "@nestjs/testing": "^10.0.0",
+    "@types/express": "^5.0.0",
+    "@types/jest": "^29.5.2",
+    "@types/node": "^20.3.1",
+    "@types/passport-jwt": "^4.0.1",
+    "@types/supertest": "^6.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^8.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "jest": "^29.5.0",
+    "prettier": "^3.0.0",
+    "source-map-support": "^0.5.21",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.1.0",
+    "ts-loader": "^9.4.3",
+    "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.1.3"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
+  }
+}
+
+
+================================================================================
+
+Archivo: api-gateway\tsconfig.build.json
+--------------------------------------------------------------------------------
+{
+  "extends": "./tsconfig.json",
+  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
+}
+
+
+================================================================================
+
+Archivo: api-gateway\tsconfig.json
+--------------------------------------------------------------------------------
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2021",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "forceConsistentCasingInFileNames": false,
+    "noFallthroughCasesInSwitch": false
+  }
+}
+
+
+================================================================================
+
+Archivo: api-gateway\src\app.controller.ts
+--------------------------------------------------------------------------------
+import { Controller, Get } from '@nestjs/common';
+import { AppService } from './app.service';
+
+@Controller()
+export class AppController {
+  constructor(private readonly appService: AppService) {}
+
+  @Get()
+  getHello(): string {
+    return this.appService.getHello();
+  }
+}
+
+
+================================================================================
+
+Archivo: api-gateway\src\app.module.ts
+--------------------------------------------------------------------------------
+import { Module } from '@nestjs/common';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
+import { CommonModule } from './common/common.module';
+import { ProxyModule } from './proxy/proxy.module';
+import { MessagingModule } from './messaging/messaging.module';
+import { ConfigModule } from '@nestjs/config';
+import { join } from 'path';
+import { GraphQLModule } from '@nestjs/graphql';
+import { ApolloDriver, ApolloDriverConfig } from "@nestjs/apollo";
+import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
+
+@Module({
+  imports: [
+
+      ConfigModule.forRoot({
+            isGlobal: true,
+            envFilePath: '.env',
+      }),
+
+      GraphQLModule.forRoot<ApolloDriverConfig>({
+        autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+        driver: ApolloDriver,
+        sortSchema: true,
+        playground: false,
+        plugins: [ApolloServerPluginLandingPageLocalDefault()],
+        context: ({ req }) => ({ req }),
+        formatError: (error) => {
+          // Personalizar el formato de errores
+          const graphQLFormattedError = {
+            message: error.message,
+            code: error.extensions?.code || 'INTERNAL_SERVER_ERROR',
+            locations: error.locations,
+            path: error.path,
+          };
+          return graphQLFormattedError;
+        },
+      }),
+
+      AuthModule,
+      CommonModule,
+      ProxyModule,
+      MessagingModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}
+
+
+================================================================================
+
+Archivo: api-gateway\src\app.service.ts
+--------------------------------------------------------------------------------
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class AppService {
+  getHello(): string {
+    return 'Hello World!';
+  }
+}
+
+
+================================================================================
+
+Archivo: api-gateway\src\main.ts
+--------------------------------------------------------------------------------
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+  await app.listen(process.env.PORT ?? 3000);
+}
+bootstrap();
+
+
+================================================================================
+
+Archivo: api-gateway\src\auth\auth.controller.ts
+--------------------------------------------------------------------------------
+import { Controller } from '@nestjs/common';
+
+@Controller('auth')
+export class AuthController {}
+
+
+================================================================================
+
+Archivo: api-gateway\src\auth\auth.module.ts
+--------------------------------------------------------------------------------
+import { Module } from '@nestjs/common';
+import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
+import { PassportModule } from '@nestjs/passport';
+import { JwtModule } from '@nestjs/jwt';
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+
+@Module({
+  imports: [
+      PassportModule.register({ defaultStrategy: 'jwt' }),
+      JwtModule.registerAsync({
+        imports: [ConfigModule],
+        useFactory: async (configService: ConfigService) => ({
+          secret: configService.get('JWT_SECRET'),
+          signOptions: { expiresIn: '1d' },
+        }),
+        inject: [ConfigService],
+      }),
+  ],
+  providers: [AuthService, JwtStrategy],
+  controllers: [AuthController],
+  exports: [AuthService],
+})
+export class AuthModule {}
+
+
+================================================================================
+
+Archivo: api-gateway\src\auth\auth.service.ts
+--------------------------------------------------------------------------------
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class AuthService {}
+
+
+================================================================================
+
+Archivo: api-gateway\src\auth\decorators\current-user.decorator.ts
+--------------------------------------------------------------------------------
+import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import { GqlExecutionContext } from '@nestjs/graphql';
+
+export const CurrentUser = createParamDecorator(
+    (data: unknown, context: ExecutionContext) => {
+        const ctx = GqlExecutionContext.create(context);
+        return ctx.getContext().req.user;
+    },
+);
+
+================================================================================
+
+Archivo: api-gateway\src\auth\decorators\roles.decorator.ts
+--------------------------------------------------------------------------------
+import { SetMetadata } from '@nestjs/common';
+
+export const ROLES_KEY = 'roles';
+export const Roles = (...roles: string[]) => SetMetadata(ROLES_KEY, roles);
+
+================================================================================
+
+Archivo: api-gateway\src\auth\guards\jwt-auth.guard.ts
+--------------------------------------------------------------------------------
+import { Injectable, ExecutionContext } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { GqlExecutionContext } from '@nestjs/graphql';
+
+@Injectable()
+export class JwtAuthGuard extends AuthGuard('jwt') {
+    getRequest(context: ExecutionContext) {
+        const ctx = GqlExecutionContext.create(context);
+        return ctx.getContext().req;
+    }
+}
+
+================================================================================
+
+Archivo: api-gateway\src\auth\guards\roles.guard.ts
+--------------------------------------------------------------------------------
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { GqlExecutionContext } from '@nestjs/graphql';
+import { ROLES_KEY } from '../decorators/roles.decorator';
+
+@Injectable()
+export class RolesGuard implements CanActivate {
+    constructor(private reflector: Reflector) {}
+
+    canActivate(context: ExecutionContext): boolean {
+        const requiredRoles = this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [
+            context.getHandler(),
+            context.getClass(),
+        ]);
+
+        if (!requiredRoles) {
+            return true;
+        }
+
+        const ctx = GqlExecutionContext.create(context);
+        const user = ctx.getContext().req.user;
+
+        return requiredRoles.includes(user.role);
+    }
+}
+
+================================================================================
+
+Archivo: api-gateway\src\auth\jwt\jwt.guard.ts
+--------------------------------------------------------------------------------
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { Observable } from 'rxjs';
+
+@Injectable()
+export class JwtGuard implements CanActivate {
+  canActivate(
+    context: ExecutionContext,
+  ): boolean | Promise<boolean> | Observable<boolean> {
+    return true;
+  }
+}
+
+
+================================================================================
+
+Archivo: api-gateway\src\auth\strategies\jwt.strategy.ts
+--------------------------------------------------------------------------------
+import { ExtractJwt, Strategy } from 'passport-jwt';
+import { PassportStrategy } from '@nestjs/passport';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+
+@Injectable()
+export class JwtStrategy extends PassportStrategy(Strategy) {
+    constructor(
+        private readonly configService: ConfigService,
+    ) {
+        super({
+            jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+            ignoreExpiration: false,
+            secretOrKey: configService.get<string>('JWT_SECRET'),
+        });
+    }
+
+    async validate(payload: any) {
+        // Aquí puedes añadir lógica adicional de validación
+        // Por ejemplo, verificar si el usuario sigue activo en la base de datos
+        return {
+            id: payload.sub,
+            email: payload.email,
+            role: payload.role,
+        };
+    }
+}
+
+================================================================================
+
+Archivo: api-gateway\src\common\common.module.ts
+--------------------------------------------------------------------------------
+import { Module } from '@nestjs/common';
+
+@Module({})
+export class CommonModule {}
+
+
+================================================================================
+
+Archivo: api-gateway\src\messaging\messaging.module.ts
+--------------------------------------------------------------------------------
+import { Module } from '@nestjs/common';
+import { ClientsModule, Transport } from '@nestjs/microservices';
+import { MessagingService } from './messaging.service';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+
+@Module({
+  imports: [
+    ClientsModule.registerAsync([
+      {
+        name: 'RABBITMQ_CLIENT',
+        imports: [ConfigModule],
+        useFactory: async (configService: ConfigService) => ({
+          transport: Transport.RMQ,
+          options: {
+            urls: [configService.get<string>('RABBITMQ_URL')],
+            queue: 'main_queue',
+            queueOptions: {
+              durable: false
+            },
+          },
+        }),
+        inject: [ConfigService],
+      },
+    ]),
+  ],
+  providers: [MessagingService],
+  exports: [MessagingService],
+})
+export class MessagingModule {}
+
+================================================================================
+
+Archivo: api-gateway\src\messaging\messaging.service.ts
+--------------------------------------------------------------------------------
+import { Injectable, Inject } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
+import { lastValueFrom } from 'rxjs';
+
+@Injectable()
+export class MessagingService {
+    constructor(
+        @Inject('RABBITMQ_CLIENT')
+        private readonly client: ClientProxy,
+    ) {}
+
+    async sendCommand(pattern: string, data: any): Promise<any> {
+        try {
+            const response = await lastValueFrom(
+                this.client.send(pattern, data)
+            );
+            return response;
+        } catch (error) {
+            throw new Error(`Error sending command ${pattern}: ${error.message}`);
+        }
+    }
+
+    async emit(pattern: string, data: any): Promise<void> {
+        try {
+            await this.client.emit(pattern, data).toPromise();
+        } catch (error) {
+            throw new Error(`Error emitting event ${pattern}: ${error.message}`);
+        }
+    }
+}
+
+================================================================================
+
+Archivo: api-gateway\src\proxy\proxy.module.ts
+--------------------------------------------------------------------------------
+import { Module } from '@nestjs/common';
+import { UsersModule } from './users/users.module';
+// import { CoursesModule } from './courses/courses.module';
+
+@Module({
+  imports: [
+      UsersModule,
+    // CoursesModule,
+  ]
+})
+export class ProxyModule {}
+
+
+================================================================================
+
+Archivo: api-gateway\src\proxy\courses\courses.module.ts
+--------------------------------------------------------------------------------
+// import { Module } from '@nestjs/common';
+// import { CoursesResolver } from './courses.resolver';
+//
+// @Module({
+//   providers: [CoursesResolver]
+// })
+// export class CoursesModule {}
+
+
+================================================================================
+
+Archivo: api-gateway\src\proxy\courses\courses.resolver.ts
+--------------------------------------------------------------------------------
+// import { Resolver, Query, Mutation, Args, Context } from '@nestjs/graphql';
+// import { UseGuards } from '@nestjs/common';
+// import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+// import { CoursesService } from './courses.service';
+// import { Course } from './models/course.model';
+//
+// @Resolver(() => Course)
+// export class CoursesResolver {
+//     constructor(private readonly coursesService: CoursesService) {}
+//
+//     @Query(() => [Course])
+//     @UseGuards(JwtAuthGuard)
+//     async courses() {
+//         return this.coursesService.findAll();
+//     }
+//
+//     // Implementar más queries y mutations según necesidades
+// }
+
+
+================================================================================
+
+Archivo: api-gateway\src\proxy\users\users.module.ts
+--------------------------------------------------------------------------------
+import { Module } from '@nestjs/common';
+import { UsersResolver } from './users.resolver';
+import { UsersService } from './users.service';
+import { MessagingModule } from '../../messaging/messaging.module';
+
+@Module({
+  imports: [MessagingModule],
+  providers: [UsersResolver, UsersService],
+  exports: [UsersService],
+})
+export class UsersModule {}
+
+================================================================================
+
+Archivo: api-gateway\src\proxy\users\users.resolver.ts
+--------------------------------------------------------------------------------
+import { Resolver, Query, Mutation, Args, Context } from '@nestjs/graphql';
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { Roles } from '../../auth/decorators/roles.decorator';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { UsersService } from './users.service';
+import { User } from './models/user.model';
+import { CreateUserInput } from './dto/create-user.input';
+import { UpdateUserInput } from './dto/update-user.input';
+
+@Resolver(() => User)
+export class UsersResolver {
+    constructor(private readonly usersService: UsersService) {}
+
+    @Query(() => [User])
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('ADMIN')
+    async users() {
+        return this.usersService.findAll();
+    }
+
+    @Query(() => User)
+    @UseGuards(JwtAuthGuard)
+    async user(@Args('id') id: string) {
+        return this.usersService.findOne(id);
+    }
+
+    @Query(() => User)
+    @UseGuards(JwtAuthGuard)
+    async me(@CurrentUser() user: any) {
+        return this.usersService.findOne(user.id);
+    }
+
+    @Mutation(() => User)
+    async createUser(
+        @Args('createUserInput') createUserInput: CreateUserInput
+    ) {
+        return this.usersService.create(createUserInput);
+    }
+
+    @Mutation(() => User)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('ADMIN')
+    async updateUser(
+        @Args('updateUserInput') updateUserInput: UpdateUserInput,
+        @CurrentUser() user: any,
+    ) {
+        return this.usersService.update(updateUserInput);
+    }
+
+    @Mutation(() => Boolean)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('ADMIN')
+    async removeUser(
+        @Args('id') id: string,
+        @CurrentUser() user: any,
+    ) {
+        return this.usersService.remove(id);
+    }
+}
+
+================================================================================
+
+Archivo: api-gateway\src\proxy\users\users.service.ts
+--------------------------------------------------------------------------------
+import { Injectable } from '@nestjs/common';
+import { MessagingService } from '../../messaging/messaging.service';
+import { CreateUserInput } from './dto/create-user.input';
+import { UpdateUserInput } from './dto/update-user.input';
+import { User } from './models/user.model';
+
+@Injectable()
+export class UsersService {
+    constructor(private readonly messagingService: MessagingService) {}
+
+    async create(createUserInput: CreateUserInput): Promise<User> {
+        // Aquí implementaremos la lógica para crear usuario a través del microservicio
+        return this.messagingService.sendCommand('create_user', createUserInput);
+    }
+
+    async findAll(): Promise<User[]> {
+        // Aquí implementaremos la lógica para obtener usuarios del microservicio
+        return this.messagingService.sendCommand('find_all_users', {});
+    }
+
+    async findOne(id: string): Promise<User> {
+        // Aquí implementaremos la lógica para obtener un usuario del microservicio
+        return this.messagingService.sendCommand('find_one_user', { id });
+    }
+
+    async update(updateUserInput: UpdateUserInput): Promise<User> {
+        // Aquí implementaremos la lógica para actualizar usuario a través del microservicio
+        return this.messagingService.sendCommand('update_user', updateUserInput);
+    }
+
+    async remove(id: string): Promise<boolean> {
+        // Aquí implementaremos la lógica para eliminar usuario a través del microservicio
+        return this.messagingService.sendCommand('remove_user', { id });
+    }
+}
+
+================================================================================
+
+Archivo: api-gateway\src\proxy\users\dto\create-user.input.ts
+--------------------------------------------------------------------------------
+import { InputType, Field } from '@nestjs/graphql';
+import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+
+@InputType()
+export class CreateUserInput {
+    @Field()
+    @IsString()
+    @IsNotEmpty()
+    username: string;
+
+    @Field()
+    @IsEmail()
+    email: string;
+
+    @Field()
+    @IsString()
+    @MinLength(6)
+    password: string;
+
+    @Field({ nullable: true })
+    role?: string;
+}
+
+================================================================================
+
+Archivo: api-gateway\src\proxy\users\dto\update-user.input.ts
+--------------------------------------------------------------------------------
+import { InputType, Field, ID, PartialType } from '@nestjs/graphql';
+import {CreateUserInput} from "./create-user.input";
+
+@InputType()
+export class UpdateUserInput extends PartialType(CreateUserInput) {
+    @Field(() => ID)
+    id: string;
+}
+
+================================================================================
+
+Archivo: api-gateway\src\proxy\users\models\user.model.ts
+--------------------------------------------------------------------------------
+import { ObjectType, Field, ID } from '@nestjs/graphql';
+
+@ObjectType()
+export class User {
+    @Field(() => ID)
+    id: string;
+
+    @Field()
+    username: string;
+
+    @Field()
+    email: string;
+
+    @Field()
+    role: string;
+
+    @Field()
+    createdAt: Date;
+
+    @Field()
+    updatedAt: Date;
+}
+
+================================================================================
+
+Archivo: api-gateway\test\app.e2e-spec.ts
+--------------------------------------------------------------------------------
+import { Test, TestingModule } from '@nestjs/testing';
+import { INestApplication } from '@nestjs/common';
+import * as request from 'supertest';
+import { AppModule } from './../src/app.module';
+
+describe('AppController (e2e)', () => {
+  let app: INestApplication;
+
+  beforeEach(async () => {
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleFixture.createNestApplication();
+    await app.init();
+  });
+
+  it('/ (GET)', () => {
+    return request(app.getHttpServer())
+      .get('/')
+      .expect(200)
+      .expect('Hello World!');
+  });
+});
+
+
+================================================================================
+
+Archivo: api-gateway\test\jest-e2e.json
+--------------------------------------------------------------------------------
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  }
+}
+
+
+================================================================================
+

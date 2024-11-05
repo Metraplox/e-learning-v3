@@ -19,7 +19,7 @@ import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin
       }),
       TypeOrmModule.forRoot({
         type: 'postgres',
-        host: 'postgres',
+        host: 'users_postgres_db',
         port: 5432,
         username: 'postgres',
         password: 'postgres',

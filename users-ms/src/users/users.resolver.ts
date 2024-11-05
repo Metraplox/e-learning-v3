@@ -4,38 +4,56 @@ import { User } from './entities/user.entity';
 import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
 import { ParseUUIDPipe } from '@nestjs/common';
+import { MessagePattern } from '@nestjs/microservices';
 
 @Resolver(() => User)
 export class UsersResolver {
   constructor(private readonly usersService: UsersService) {}
 
   @Mutation(() => User)
-  createUser(@Args('createUserInput') createUserInput: CreateUserInput) {
+  async createUser(@Args('createUserInput') createUserInput: CreateUserInput) {
     return this.usersService.create(createUserInput);
   }
 
   @Query(() => [User], { name: 'users' })
-  findAll() {
+  async findAll() {
     return this.usersService.findAll();
   }
 
   @Query(() => User, { name: 'user' })
-  findOne(@Args('id', { type: () => ID }, ParseUUIDPipe) id: string) {
+  async findOne(@Args('id', { type: () => ID }, ParseUUIDPipe) id: string) {
     return this.usersService.findOne(id);
   }
 
   @Query(() => User, { name: 'userByEmail' })
-  findByEmail(@Args('email') email: string) {
+  async findByEmail(@Args('email') email: string) {
     return this.usersService.findByEmail(email);
   }
 
-  @Mutation(() => User)
-  updateUser(@Args('updateUserInput') updateUserInput: UpdateUserInput) {
-    return this.usersService.update(updateUserInput.id, updateUserInput);
+  // RabbitMQ Message Patterns para comunicación entre servicios
+  @MessagePattern('users.findAll')
+  async findAllUsers() {
+    return this.usersService.findAll();
   }
 
-  @Mutation(() => Boolean)
-  removeUser(@Args('id', { type: () => ID }, ParseUUIDPipe) id: string) {
-    return this.usersService.remove(id);
+  @MessagePattern('users.findOne')
+  async findOneUser(data: { id: string }) {
+    return this.usersService.findOne(data.id);
   }
+
+  @MessagePattern('users.create')
+  async createUserMessage(createUserInput: CreateUserInput) {
+    return this.usersService.create(createUserInput);
+  }
+
+  @MessagePattern('users.update')
+  async updateUser(data: { id: string, updateUserInput: UpdateUserInput }) {
+    return this.usersService.update(data.id, data.updateUserInput);
+  }
+
+  @MessagePattern('users.remove')
+  async removeUser(data: { id: string }) {
+    return this.usersService.remove(data.id);
+  }
+
 }
