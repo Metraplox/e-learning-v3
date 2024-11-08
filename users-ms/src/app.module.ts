@@ -16,6 +16,16 @@ import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin
         sortSchema: true,
         playground: false,
         plugins: [ApolloServerPluginLandingPageLocalDefault()],
+        context: ({ req }) => ({ req }),
+        formatError: (error) => {
+          // Personalizar el formato de errores
+          return {
+            message: error.message,
+            code: error.extensions?.code || 'INTERNAL_SERVER_ERROR',
+            locations: error.locations,
+            path: error.path,
+          };
+        },
       }),
       TypeOrmModule.forRoot({
         type: 'postgres',

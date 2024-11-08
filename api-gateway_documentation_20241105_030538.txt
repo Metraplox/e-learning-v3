@@ -521,12 +521,12 @@ bootstrap();
 
 ================================================================================
 
-Archivo: api-gateway\src\auth\auth.controller.ts
+Archivo: api-gateway\src\auth\auth.resolver.ts
 --------------------------------------------------------------------------------
 import { Controller } from '@nestjs/common';
 
 @Controller('auth')
-export class AuthController {}
+export class AuthResolver {}
 
 
 ================================================================================
@@ -535,7 +535,7 @@ Archivo: api-gateway\src\auth\auth.module.ts
 --------------------------------------------------------------------------------
 import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
+import { AuthResolver } from './auth.controller';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -554,7 +554,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       }),
   ],
   providers: [AuthService, JwtStrategy],
-  controllers: [AuthController],
+  controllers: [AuthResolver],
   exports: [AuthService],
 })
 export class AuthModule {}

@@ -1,0 +1,155 @@
+Documentación del Proyecto - .
+Generado el: 2024-11-07 17:53:10
+================================================================================
+
+Archivo: .\.gitattributes
+--------------------------------------------------------------------------------
+# Auto detect text files and perform LF normalization
+* text=auto
+
+
+================================================================================
+
+Archivo: .\.gitignore
+--------------------------------------------------------------------------------
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Compiled output
+dist/
+**/dist/
+build/
+**/build/
+
+# IDE - IntelliJ/WebStorm
+.idea/
+**/.idea/
+*.iml
+*.iws
+*.ipr
+
+# IDE - VSCode
+.vscode/
+**/.vscode/
+
+# Environment
+.env
+**/.env
+.env.*
+**/.env.*
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+postgres_data/
+
+# Generated files
+**/schema.gql
+
+================================================================================
+
+Archivo: .\docker-compose.yml
+--------------------------------------------------------------------------------
+services:
+  api-gateway:
+    container_name: api-gateway
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+      target: production
+    ports:
+      - '4000:4000'
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - JWT_SECRET=CoD3r0$-AP1-G4t3w4y
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+    depends_on:
+      users:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3-management
+    ports:
+      - '5672:5672'  # AMQP protocol port
+      - '15672:15672'  # Management UI port
+    networks:
+      - app-network
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "check_port_connectivity" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  users:
+    container_name: users-ms
+    build:
+      context: ./users-ms
+      dockerfile: Dockerfile
+    networks:
+      - app-network
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./users-ms:/usr/src/app
+      - /usr/src/app/node_modules
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=users_postgres_db
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_DATABASE=users_db
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_QUEUE=users_queue
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    command: npm run start:dev
+
+  postgres:
+    container_name: users_postgres_db
+    image: postgres:15.3-alpine
+    networks:
+      - app-network
+    ports:
+      - '5433:5432'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=users_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+
+================================================================================
+

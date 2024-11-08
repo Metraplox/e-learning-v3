@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { UsersResolver } from './users.resolver';
 import { UsersService } from './users.service';
-import { MessagingModule } from '../../messaging/messaging.module';
+import {ConfigModule} from "@nestjs/config";
 
 @Module({
-  imports: [MessagingModule],
+  imports: [ConfigModule],
   providers: [UsersResolver, UsersService],
   exports: [UsersService],
 })

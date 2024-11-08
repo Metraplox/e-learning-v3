@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   api-gateway:
     container_name: api-gateway
@@ -19,6 +21,7 @@ services:
         condition: service_healthy
     networks:
       - app-network
+    restart: unless-stopped
 
   rabbitmq:
     container_name: rabbitmq
@@ -33,14 +36,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
 
   users:
     container_name: users-ms
     build:
       context: ./users-ms
       dockerfile: Dockerfile
-    networks:
-      - app-network
     ports:
       - '3000:3000'
     volumes:
@@ -60,14 +64,14 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    networks:
+      - app-network
     restart: unless-stopped
     command: npm run start:dev
 
   postgres:
     container_name: users_postgres_db
     image: postgres:15.3-alpine
-    networks:
-      - app-network
     ports:
       - '5433:5432'
     environment:
@@ -76,8 +80,10 @@ services:
       - POSTGRES_DB=users_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5

@@ -1,35 +1,106 @@
-import { Injectable } from '@nestjs/common';
-import { MessagingService } from '../../messaging/messaging.service';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { ClientProxy, ClientProxyFactory, Transport } from '@nestjs/microservices';
+import { ConfigService } from '@nestjs/config';
 import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
 import { User } from './models/user.model';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class UsersService {
-    constructor(private readonly messagingService: MessagingService) {}
+    private client: ClientProxy;
+
+    constructor(private readonly configService: ConfigService) {
+        this.client = ClientProxyFactory.create({
+            transport: Transport.RMQ,
+            options: {
+                urls: [this.configService.get<string>('RABBITMQ_URL')],
+                queue: this.configService.get<string>('RABBITMQ_QUEUE') || 'users_queue',
+                queueOptions: {
+                    durable: false
+                },
+            },
+        });
+    }
+
+    async onModuleInit() {
+        await this.client.connect();
+    }
 
     async create(createUserInput: CreateUserInput): Promise<User> {
-        // Aquí implementaremos la lógica para crear usuario a través del microservicio
-        return this.messagingService.sendCommand('create_user', createUserInput);
+        try {
+            const response = await lastValueFrom(
+                this.client.send<User>('users.create', createUserInput)
+            );
+
+            if (!response) {
+                throw new InternalServerErrorException('Failed to create user');
+            }
+
+            return response;
+        } catch (error) {
+            throw new InternalServerErrorException(
+                `Error creating user: ${error.message || 'Unknown error'}`
+            );
+        }
     }
 
     async findAll(): Promise<User[]> {
-        // Aquí implementaremos la lógica para obtener usuarios del microservicio
-        return this.messagingService.sendCommand('find_all_users', {});
+        try {
+            const response = await lastValueFrom(
+                this.client.send<User[]>('users.findAll', {})
+            );
+            return response;
+        } catch (error) {
+            throw new InternalServerErrorException(`Error fetching users: ${error.message}`);
+        }
     }
 
     async findOne(id: string): Promise<User> {
-        // Aquí implementaremos la lógica para obtener un usuario del microservicio
-        return this.messagingService.sendCommand('find_one_user', { id });
+        try {
+            const response = await lastValueFrom(
+                this.client.send<User>('users.findOne', { id })
+            );
+            return response;
+        } catch (error) {
+            throw new InternalServerErrorException(`Error fetching user: ${error.message}`);
+        }
     }
 
-    async update(updateUserInput: UpdateUserInput): Promise<User> {
-        // Aquí implementaremos la lógica para actualizar usuario a través del microservicio
-        return this.messagingService.sendCommand('update_user', updateUserInput);
+    async findByEmail(email: string): Promise<User> {
+        try {
+            const response = await lastValueFrom(
+                this.client.send<User>('users.findByEmail', { email })
+            );
+            return response;
+        } catch (error) {
+            throw new InternalServerErrorException(`Error fetching user by email: ${error.message}`);
+        }
+    }
+
+    async update(id: string, updateUserInput: UpdateUserInput): Promise<User> {
+        try {
+            const response = await lastValueFrom(
+                this.client.send<User>('users.update', { id, updateUserInput })
+            );
+            return response;
+        } catch (error) {
+            throw new InternalServerErrorException(`Error updating user: ${error.message}`);
+        }
     }
 
     async remove(id: string): Promise<boolean> {
-        // Aquí implementaremos la lógica para eliminar usuario a través del microservicio
-        return this.messagingService.sendCommand('remove_user', { id });
+        try {
+            const response = await lastValueFrom(
+                this.client.send<boolean>('users.remove', { id })
+            );
+            return response;
+        } catch (error) {
+            throw new InternalServerErrorException(`Error removing user: ${error.message}`);
+        }
+    }
+
+    async onApplicationShutdown() {
+        await this.client.close();
     }
 }

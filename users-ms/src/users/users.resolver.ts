@@ -1,59 +1,72 @@
 import { Resolver, Query, Mutation, Args, ID } from '@nestjs/graphql';
-import { UsersService } from './users.service';
+import { MessagePattern, Payload } from '@nestjs/microservices';
+import { Controller } from '@nestjs/common';
 import { User } from './entities/user.entity';
+import { UsersService } from './users.service';
 import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
-import { ParseUUIDPipe } from '@nestjs/common';
-import { MessagePattern } from '@nestjs/microservices';
 
+@Controller()
 @Resolver(() => User)
 export class UsersResolver {
   constructor(private readonly usersService: UsersService) {}
 
-  @Mutation(() => User)
-  async createUser(@Args('createUserInput') createUserInput: CreateUserInput) {
-    return this.usersService.create(createUserInput);
+  @Query(() => [User], { name: 'users' })
+  findAllGraphQL() {
+    return this.usersService.findAll();
   }
 
-  @Query(() => [User], { name: 'users' })
-  async findAll() {
+  @MessagePattern('users.findAll')
+  findAll() {
     return this.usersService.findAll();
   }
 
   @Query(() => User, { name: 'user' })
-  async findOne(@Args('id', { type: () => ID }, ParseUUIDPipe) id: string) {
+  findOneGraphQL(@Args('id', { type: () => ID }) id: string) {
     return this.usersService.findOne(id);
   }
 
-  @Query(() => User, { name: 'userByEmail' })
-  async findByEmail(@Args('email') email: string) {
-    return this.usersService.findByEmail(email);
-  }
-
-  // RabbitMQ Message Patterns para comunicación entre servicios
-  @MessagePattern('users.findAll')
-  async findAllUsers() {
-    return this.usersService.findAll();
-  }
-
   @MessagePattern('users.findOne')
-  async findOneUser(data: { id: string }) {
+  findOne(@Payload() data: { id: string }) {
     return this.usersService.findOne(data.id);
   }
 
-  @MessagePattern('users.create')
-  async createUserMessage(createUserInput: CreateUserInput) {
+  @MessagePattern('users.findByEmail')
+  findByEmail(@Payload() data: { email: string }) {
+    return this.usersService.findByEmail(data.email);
+  }
+
+  @Mutation(() => User)
+  createUserGraphQL(
+      @Args('createUserInput') createUserInput: CreateUserInput,
+  ) {
     return this.usersService.create(createUserInput);
   }
 
+  @MessagePattern('users.create')
+  create(@Payload() createUserInput: CreateUserInput) {
+    return this.usersService.create(createUserInput);
+  }
+
+  @Mutation(() => User)
+  updateUserGraphQL(
+      @Args('updateUserInput') updateUserInput: UpdateUserInput,
+  ) {
+    return this.usersService.update(updateUserInput.id, updateUserInput);
+  }
+
   @MessagePattern('users.update')
-  async updateUser(data: { id: string, updateUserInput: UpdateUserInput }) {
-    return this.usersService.update(data.id, data.updateUserInput);
+  update(@Payload() payload: { id: string; updateUserInput: UpdateUserInput }) {
+    return this.usersService.update(payload.id, payload.updateUserInput);
+  }
+
+  @Mutation(() => Boolean)
+  removeUserGraphQL(@Args('id', { type: () => ID }) id: string) {
+    return this.usersService.remove(id);
   }
 
   @MessagePattern('users.remove')
-  async removeUser(data: { id: string }) {
+  remove(@Payload() data: { id: string }) {
     return this.usersService.remove(data.id);
   }
-
 }
