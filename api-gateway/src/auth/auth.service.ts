@@ -1,61 +1,82 @@
-import { Injectable, Inject, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Inject, UnauthorizedException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ClientProxy } from '@nestjs/microservices';
-import { LoginInput } from './dto/login.input';
-import { User } from '../proxy/users/models/user.model';
-import { lastValueFrom } from 'rxjs';
+import { CreateUserInput } from "../proxy/users/dto/create-user.input";
+import { firstValueFrom } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 import * as bcrypt from 'bcrypt';
-import {CreateUserInput} from "../proxy/users/dto/create-user.input";
 
 @Injectable()
 export class AuthService {
     constructor(
         private readonly jwtService: JwtService,
-        @Inject('USERS_SERVICE') private readonly usersServiceClient: ClientProxy, // Cliente del microservicio de usuarios
+        @Inject('USERS_SERVICE') private readonly usersServiceClient: ClientProxy,
     ) {}
 
-    async login(loginInput: LoginInput): Promise<string> {
-        const { email, password } = loginInput;
+    async register(createUserInput: CreateUserInput) {
+        try {
+            // 1. Hash del password antes de enviarlo al microservicio
+            const hashedPassword = await bcrypt.hash(createUserInput.password, 10);
 
-        const user = await lastValueFrom(
-            this.usersServiceClient.send<User>({ cmd: 'find-user-by-email' }, email)
-        );
+            // 2. Crear usuario directamente - el microservicio manejará la validación de existencia
+            const newUser = await firstValueFrom(
+                this.usersServiceClient.send('users.create', {
+                    ...createUserInput,
+                    password: hashedPassword
+                }).pipe(
+                    map(user => {
+                        if (!user) throw new InternalServerErrorException('User creation failed');
+                        return user;
+                    }),
+                    catchError(error => {
+                        if (error?.status === 409) {
+                            throw new BadRequestException(error.message || 'User already exists');
+                        }
+                        throw new InternalServerErrorException('Registration failed - Please try again');
+                    })
+                )
+            );
 
-        if (!user) {
-            throw new UnauthorizedException('User not found');
+            // 3. Generar token JWT
+            const token = this.generateToken(newUser);
+
+            // 4. Eliminar password de la respuesta
+            const { password, ...userWithoutPassword } = newUser;
+
+            // 5. Retornar respuesta formateada
+            return {
+                token,
+                user: userWithoutPassword
+            };
+
+        } catch (error) {
+            if (error instanceof BadRequestException ||
+                error instanceof UnauthorizedException) {
+                throw error;
+            }
+
+            console.error('Registration error:', {
+                message: error.message,
+                code: error.code,
+                status: error.status
+            });
+
+            throw new InternalServerErrorException(
+                'Registration service temporarily unavailable'
+            );
         }
-
-        return this.generateToken(user);
     }
 
-    async register(userInput: CreateUserInput): Promise<User> {
-        const hashedPassword = await bcrypt.hash(userInput.password, 10);
-
-        // Enviar solicitud para crear un nuevo usuario
-        const newUser = await lastValueFrom(
-            this.usersServiceClient.send<User>({ cmd: 'create-user' }, {
-                ...userInput,
-                password: hashedPassword
-            })
-        );
-
-        return newUser;
-    }
-
-    async validateUser(userId: string): Promise<User> {
-        // Solicitar usuario al servicio de usuarios por ID
-        const user = await lastValueFrom(
-            this.usersServiceClient.send<User>({ cmd: 'find-user-by-id' }, userId)
-        );
-
-        if (!user) {
-            throw new UnauthorizedException('User not found');
+    private generateToken(user: any): string {
+        try {
+            return this.jwtService.sign({
+                sub: user.id,
+                email: user.email,
+                role: user.role,
+                username: user.username
+            });
+        } catch (error) {
+            throw new InternalServerErrorException('Token generation failed');
         }
-        return user;
-    }
-
-    private generateToken(user: User): string {
-        const payload = { sub: user.id, email: user.email, role: user.role };
-        return this.jwtService.sign(payload);
     }
 }

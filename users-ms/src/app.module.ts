@@ -16,6 +16,10 @@ import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin
         sortSchema: true,
         playground: false,
         plugins: [ApolloServerPluginLandingPageLocalDefault()],
+        buildSchemaOptions: {
+          dateScalarMode: 'timestamp',
+          numberScalarMode: 'float',
+        },
         context: ({ req }) => ({ req }),
         formatError: (error) => {
           // Personalizar el formato de errores

@@ -6,18 +6,21 @@ export class User {
     @Field(() => ID)
     id: string;
 
-    @Field()
+    @Field(() => String)
     username: string;
 
-    @Field()
+    @Field(() => String)
     email: string;
+
+    // No exponer password en GraphQL
+    password?: string;
 
     @Field(() => UserRole)
     role: UserRole;
 
-    @Field()
+    @Field(() => Date)
     createdAt: Date;
 
-    @Field()
+    @Field(() => Date)
     updatedAt: Date;
 }

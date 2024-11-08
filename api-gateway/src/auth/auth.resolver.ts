@@ -1,28 +1,22 @@
-//auth.resolver.ts
-import {Args, Mutation, Resolver} from '@nestjs/graphql';
-import {AuthService} from './auth.service';
-import {LoginInput} from './dto/login.input';
-import {User} from '../proxy/users/models/user.model';
-import {CreateUserInput} from "../proxy/users/dto/create-user.input";
+import { Resolver, Mutation, Args } from '@nestjs/graphql';
+import { AuthService } from './auth.service';
+import { Auth } from './models/auth.model';
+import { LoginInput } from './dto/login.input';
+import { CreateUserInput } from '../proxy/users/dto/create-user.input';
 
-@Resolver(() => User)
+@Resolver(() => Auth)
 export class AuthResolver {
     constructor(private readonly authService: AuthService) {}
 
-    @Mutation(() => String)
-    async login(@Args('loginInput') loginInput: LoginInput) {
+    @Mutation(() => Auth)
+    async login(@Args('loginInput') loginInput: LoginInput): Promise<Auth> {
         return this.authService.login(loginInput);
     }
 
-    @Mutation(() => User)
-    async register(@Args('registerInput') registerInput: CreateUserInput) {
-        return this.authService.register(registerInput);
-    }
-
-    @Mutation(() => User)
-    async validateUser(@Args('id') id: string) {
-        return this.authService.validateUser(id);
+    @Mutation(() => Auth)
+    async register(
+        @Args('createUserInput') createUserInput: CreateUserInput
+    ): Promise<Auth> {
+        return this.authService.register(createUserInput);
     }
 }
-
-

@@ -1,6 +1,6 @@
 import { Resolver, Query, Mutation, Args, ID } from '@nestjs/graphql';
-import { MessagePattern, Payload } from '@nestjs/microservices';
-import { Controller } from '@nestjs/common';
+import {MessagePattern, Payload, RpcException} from '@nestjs/microservices';
+import {ConflictException, Controller} from '@nestjs/common';
 import { User } from './entities/user.entity';
 import { UsersService } from './users.service';
 import { CreateUserInput } from './dto/create-user.input';
@@ -10,6 +10,22 @@ import { UpdateUserInput } from './dto/update-user.input';
 @Resolver(() => User)
 export class UsersResolver {
   constructor(private readonly usersService: UsersService) {}
+
+  @MessagePattern('users.create')
+  async create(@Payload() createUserInput: CreateUserInput): Promise<User> {
+    try {
+      return await this.usersService.create(createUserInput);
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        // Propagar error con estado específico para el gateway
+        throw new RpcException({
+          status: 409,
+          message: error.message
+        });
+      }
+      throw new RpcException('User creation failed');
+    }
+  }
 
   @Query(() => [User], { name: 'users' })
   findAllGraphQL() {
@@ -40,11 +56,6 @@ export class UsersResolver {
   createUserGraphQL(
       @Args('createUserInput') createUserInput: CreateUserInput,
   ) {
-    return this.usersService.create(createUserInput);
-  }
-
-  @MessagePattern('users.create')
-  create(@Payload() createUserInput: CreateUserInput) {
     return this.usersService.create(createUserInput);
   }
 
