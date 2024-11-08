@@ -42,4 +42,6 @@ postgres_data/
 # Generated files
 **/schema.gql
 
-.txt
+*.txt
+*.py
+
