@@ -70,6 +70,16 @@ export class UsersService {
     return user;
   }
 
+  async findByEmailWithPassword(email: string): Promise<User> {
+    const user = await this.userRepository
+        .createQueryBuilder('user')
+        .where('user.email = :email', { email })
+        .addSelect('user.password') // Explícitamente seleccionar password
+        .getOne();
+
+    return user;
+  }
+
   async update(id: string, updateUserInput: UpdateUserInput): Promise<User> {
     const user = await this.userRepository.preload({
       id: id,
@@ -89,4 +99,8 @@ export class UsersService {
     const result = await this.userRepository.delete(id);
     return result.affected > 0;
   }
+
+    async findAll(): Promise<User[]> {
+        return this.userRepository.find();
+    }
 }

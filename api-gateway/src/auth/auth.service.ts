@@ -5,6 +5,7 @@ import { CreateUserInput } from "../proxy/users/dto/create-user.input";
 import { firstValueFrom } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import * as bcrypt from 'bcrypt';
+import { LoginInput } from './dto/login.input';
 
 @Injectable()
 export class AuthService {
@@ -12,6 +13,46 @@ export class AuthService {
         private readonly jwtService: JwtService,
         @Inject('USERS_SERVICE') private readonly usersServiceClient: ClientProxy,
     ) {}
+
+    async login(loginInput: LoginInput) {
+        try {
+            const user = await firstValueFrom(
+                this.usersServiceClient.send('users.findByEmailWithPassword', {
+                    email: loginInput.email
+                })
+            );
+
+            if (!user) throw new UnauthorizedException('User not found');
+            if (!user.password) throw new UnauthorizedException('Invalid password');
+
+            // Verificar password
+            const isPasswordValid = await bcrypt.compare(
+                loginInput.password,
+                user.password
+            );
+
+            if (!isPasswordValid) {
+                throw new UnauthorizedException('Incorrect password');
+            }
+
+            // Generar token
+            const token = this.generateToken(user);
+
+            // Eliminar password de la respuesta
+            const { password, ...userWithoutPassword } = user;
+
+            return {
+                token,
+                user: userWithoutPassword
+            };
+
+        } catch (error) {
+            if (error instanceof UnauthorizedException) {
+                throw error;
+            }
+            throw new InternalServerErrorException('Login failed - Please try again');
+        }
+    }
 
     async register(createUserInput: CreateUserInput) {
         try {
@@ -78,5 +119,7 @@ export class AuthService {
         } catch (error) {
             throw new InternalServerErrorException('Token generation failed');
         }
+
     }
+
 }

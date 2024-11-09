@@ -27,6 +27,15 @@ export class UsersResolver {
     }
   }
 
+  @MessagePattern('users.findByEmailWithPassword')
+  async findByEmailWithPassword(@Payload() data: { email: string }): Promise<User> {
+    const user = await this.usersService.findByEmailWithPassword(data.email);
+    if (!user) {
+      throw new RpcException('User not found');
+    }
+    return user;
+  }
+
   @Query(() => [User], { name: 'users' })
   findAllGraphQL() {
     return this.usersService.findAll();
@@ -48,7 +57,7 @@ export class UsersResolver {
   }
 
   @MessagePattern('users.findByEmail')
-  findByEmail(@Payload() data: { email: string }) {
+  async findByEmail(@Payload() data: { email: string }): Promise<User> {
     return this.usersService.findByEmail(data.email);
   }
 
