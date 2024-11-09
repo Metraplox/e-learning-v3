@@ -1,5 +1,5 @@
 import { Resolver, Query, Mutation, Args, Context } from '@nestjs/graphql';
-import { UseGuards } from '@nestjs/common';
+import {UnauthorizedException, UseGuards} from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -8,6 +8,7 @@ import { UsersService } from './users.service';
 import { User } from './models/user.model';
 import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
+import {UserRole} from "./enums/user-role.enum";
 
 @Resolver(() => User)
 export class UsersResolver {
@@ -39,13 +40,22 @@ export class UsersResolver {
         return this.usersService.create(createUserInput);
     }
 
-    @Mutation(() => User)
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('ADMIN')
+    @Mutation(() => User)
     async updateUser(
         @Args('updateUserInput') updateUserInput: UpdateUserInput,
-        @CurrentUser() user: any,
+        @CurrentUser() currentUser: User
     ) {
+        // El usuario está intentando actualizar su propio perfil?
+        if (updateUserInput.id !== currentUser.id && currentUser.role !== UserRole.ADMIN) {
+            throw new UnauthorizedException('You can only update your own profile');
+        }
+
+        // No permitir cambio de rol excepto para ADMIN
+        if (updateUserInput.role && currentUser.role !== UserRole.ADMIN) {
+            delete updateUserInput.role;
+        }
+
         return this.usersService.update(updateUserInput.id, updateUserInput);
     }
 
