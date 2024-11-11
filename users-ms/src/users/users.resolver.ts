@@ -5,6 +5,7 @@ import { User } from './entities/user.entity';
 import { UsersService } from './users.service';
 import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
+import { CreateGoogleUserInput } from './dto/create-google-user.input';
 
 @Controller()
 @Resolver(() => User)
@@ -89,4 +90,9 @@ export class UsersResolver {
   remove(@Payload() data: { id: string }) {
     return this.usersService.remove(data.id);
   }
+
+  @MessagePattern('users.createGoogleUser')
+    async createGoogleUser(@Payload() createGoogleUserInput: CreateGoogleUserInput) {
+        return this.usersService.createGoogleUser(createGoogleUserInput);
+    }
 }

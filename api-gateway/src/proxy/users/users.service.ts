@@ -5,6 +5,8 @@ import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
 import { User } from './models/user.model';
 import { lastValueFrom } from 'rxjs';
+import { CreateGoogleUserInput } from './dto/create-google-user.input';
+import { UserRole } from './enums/user-role.enum';
 
 @Injectable()
 export class UsersService {
@@ -102,5 +104,25 @@ export class UsersService {
 
     async onApplicationShutdown() {
         await this.client.close();
+    }
+
+    async createGoogleUser(createGoogleUserInput: CreateGoogleUserInput): Promise<User> {
+        const { email, username, role } = createGoogleUserInput;
+
+        // Verifica si el usuario ya existe con ese correo
+        const existingUser = await this.findByEmail(email);
+        if (existingUser) {
+            return existingUser; // Si el usuario ya existe, retorna el usuario existente
+        }
+
+        // Configurar una contraseña predeterminada para usuarios de Google
+        const createUserInput: CreateUserInput = {
+            email,
+            username,
+            role: role || UserRole.STUDENT,
+            password: 'default-google-password', // Contraseña predeterminada
+        };
+
+        return this.create(createUserInput); // Reutiliza el método `create`
     }
 }

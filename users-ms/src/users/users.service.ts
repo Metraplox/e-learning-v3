@@ -5,6 +5,7 @@ import { User } from './entities/user.entity';
 import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
 import * as bcrypt from 'bcrypt';
+import { CreateGoogleUserInput } from './dto/create-google-user.input';
 
 @Injectable()
 export class UsersService {
@@ -64,7 +65,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException(`User with email "${email}" not found`);
+      return null;
     }
 
     return user;
@@ -103,4 +104,16 @@ export class UsersService {
     async findAll(): Promise<User[]> {
         return this.userRepository.find();
     }
+
+    async createGoogleUser(createGoogleUserInput: CreateGoogleUserInput): Promise<User> {
+      const { email, username, role } = createGoogleUserInput;
+      const existingUser = await this.findByEmail(email);
+      
+      if (existingUser) {
+          return existingUser;
+      }
+
+      const newUser = this.userRepository.create({ email, username, role });
+      return this.userRepository.save(newUser);
+  }
 }

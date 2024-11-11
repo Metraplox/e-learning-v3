@@ -8,6 +8,7 @@ import { UsersService } from './users.service';
 import { User } from './models/user.model';
 import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
+import { CreateGoogleUserInput } from './dto/create-google-user.input';
 import {UserRole} from "./enums/user-role.enum";
 
 @Resolver(() => User)
@@ -35,9 +36,18 @@ export class UsersResolver {
 
     @Mutation(() => User)
     async createUser(
-        @Args('createUserInput') createUserInput: CreateUserInput
+      @Args('createUserInput') createUserInput: CreateUserInput
     ) {
-        return this.usersService.create(createUserInput);
+      const existingUser = await this.usersService.findByEmail(createUserInput.email);
+      if (existingUser) {
+        throw new Error('User with this email already exists');
+      }
+      return this.usersService.create(createUserInput);
+    }
+  
+    @Query(() => User, { nullable: true })
+    async checkUser(@Args('email') email: string): Promise<User | null> {
+      return this.usersService.findByEmail(email);
     }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
@@ -75,4 +85,21 @@ export class UsersResolver {
       const userId = context.req.user.id; // Obtiene el ID del usuario desde el token JWT
       return this.usersService.findOne(userId);
     }
+
+    @Mutation(() => User)
+    async createGoogleUser(
+        @Args('createGoogleUserInput') createGoogleUserInput: CreateGoogleUserInput
+    ): Promise<User> {
+        // Verifica si el usuario ya existe por email
+        const existingUser = await this.usersService.findByEmail(createGoogleUserInput.email);
+        
+        if (existingUser) {
+            return existingUser; // Devuelve el usuario existente si ya está en la base de datos
+        }
+        
+        // Si no existe, procede a crear un nuevo usuario
+        return this.usersService.createGoogleUser(createGoogleUserInput);
+    }
+
+
 }
