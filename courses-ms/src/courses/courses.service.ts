@@ -1,77 +1,60 @@
-import {Injectable, NotFoundException} from '@nestjs/common';
-import {CreateCourseInput} from './dto/inputs/create-course.input';
-import {UpdateCourseInput} from './dto/inputs/update-course.input';
-import {Course} from './entities/course.entity';
+// courses-ms/src/courses/courses.service.ts
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Course } from './entities/course.entity';
+import { Enrollment } from './entities/enrollment.entity';
+import {EnrollCourseInput} from "./dto/inputs/enroll-course.input";
+import {CreateCourseInput} from "./dto/inputs/create-course.input";
+import {CourseStatus} from "./enums/course-status.enum";
+import {UpdateCourseInput} from "./dto/inputs/update-course.input";
 
 @Injectable()
 export class CoursesService {
+    constructor(
+        @InjectRepository(Course)
+        private courseRepository: Repository<Course>,
+        @InjectRepository(Enrollment)
+        private enrollmentRepository: Repository<Enrollment>,
+    ) {}
 
-    private courses: Course[] = [
-        {
-        id: '1',
-        name: 'Course 1',
-        description: 'Description of course 1',
-        teacher: 'Teacher 1',
-        duration: 10,
-        price: 100,
-        },
-        {
-        id: '2',
-        name: 'Course 2',
-        description: 'Description of course 2',
-        teacher: 'Teacher 2',
-        duration: 20,
-        price: 200,
-        },
-        {
-        id: '3',
-        name: 'Course 3',
-        description: 'Description of course 3',
-        teacher: 'Teacher 3',
-        duration: 30,
-        price: 300,
+    async create(createCourseInput: CreateCourseInput): Promise<Course> {
+        const course = this.courseRepository.create(createCourseInput);
+        return await this.courseRepository.save(course);
+    }
+
+    async findAll(): Promise<Course[]> {
+        return await this.courseRepository.find({
+            where: { status: CourseStatus.PUBLISHED },
+        });
+    }
+
+    async findOne(id: string): Promise<Course> {
+        const course = await this.courseRepository.findOne({ where: { id } });
+        if (!course) {
+            throw new NotFoundException(`Course with ID "${id}" not found`);
         }
-    ];
+        return course;
+    }
 
-  create(createCourseInput: CreateCourseInput) {
+    async enroll(enrollCourseInput: EnrollCourseInput): Promise<Enrollment> {
+        const enrollment = this.enrollmentRepository.create(enrollCourseInput);
+        return await this.enrollmentRepository.save(enrollment);
+    }
 
-    const courses = new Course();
-    courses.id = createCourseInput.id;
-    courses.name = createCourseInput.name;
+    async getUserCourses(userId: string): Promise<string[]> {
+        const enrollments = await this.enrollmentRepository.find({
+            where: { userId },
+            relations: ['course'],
+        });
+        return enrollments.map(enrollment => enrollment.courseId);
+    }
 
-    this.courses.push(courses);
+    remove(id: number) {
 
-    return courses;
-  }
+    }
 
-  findAll() {
-    return this.courses;
-  }
+    update(updateCourseInput: UpdateCourseInput) {
 
-    findOne(id: string): Course {
-    const course =  this.courses.find(course => course.id === id);
-
-    if(!course) throw new NotFoundException(`Course with id ${id} not found`);
-
-    return course;
-  }
-
-  update( updateCourseInput: UpdateCourseInput) {
-
-    const { id, name, description, teacher, duration, price, category, image, video } = updateCourseInput;
-    const courseToUpdate = this.findOne(id);
-
-    if(name) courseToUpdate.name = name;
-    if(description) courseToUpdate.description = description;
-    if(teacher) courseToUpdate.teacher = teacher;
-    if(duration) courseToUpdate.duration = duration;
-    if(price) courseToUpdate.price = price;
-
-
-    return `This action updates a #${id} course`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} course`;
-  }
+    }
 }

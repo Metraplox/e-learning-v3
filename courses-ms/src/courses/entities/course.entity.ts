@@ -1,6 +1,7 @@
 import { ObjectType, Field, Int, ID } from '@nestjs/graphql';
-import { PrimaryGeneratedColumn, Column } from 'typeorm';
+import {PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn} from 'typeorm';
 import {IsNumber, IsPositive, IsString} from 'class-validator';
+import {CourseStatus} from "../enums/course-status.enum";
 
 @ObjectType()
 export class Course {
@@ -13,7 +14,7 @@ export class Course {
     @Field(() => String, { description: 'The name of the course' })
     @Column()
     @IsString()
-    name: string;
+    title: string;
 
     @Field(() => String, { description: 'The description of the course' })
     @Column()
@@ -32,5 +33,21 @@ export class Course {
 
     @Field(() => String, { description: 'The teacher of the course' })
     @Column()
-    teacher: string;
+    teacherId: string;
+
+    @Column({
+      type: 'enum',
+      enum: CourseStatus,
+      default: CourseStatus.DRAFT,
+    })
+    @Field(() => CourseStatus)
+    status: CourseStatus;
+
+    @CreateDateColumn()
+    @Field()
+    createdAt: Date;
+
+    @UpdateDateColumn()
+    @Field()
+    updatedAt: Date;
 }

@@ -34,6 +34,7 @@ import {DateScalar} from "./common/date.scalar";
       ]),
 
       GraphQLModule.forRoot<ApolloDriverConfig>({
+        context: ({ req }) => ({ req }),
         driver: ApolloDriver,
         autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
         sortSchema: true,
@@ -43,6 +44,7 @@ import {DateScalar} from "./common/date.scalar";
           dateScalarMode: 'timestamp',
           numberScalarMode: 'float',
         },
+
         formatError: (error) => {
           const graphQLFormattedError = {
               message: error.message,
