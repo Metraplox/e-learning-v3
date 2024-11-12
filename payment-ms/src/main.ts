@@ -1,22 +1,37 @@
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
+import { ValidationPipe, ClassSerializerInterceptor } from '@nestjs/common';
+import { Transport } from '@nestjs/microservices';
 import { AppModule } from './app.module';
-import {MicroserviceOptions, Transport} from '@nestjs/microservices';
+
+import { RabbitMQ } from './common/constants';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-
-  app.connectMicroservice<MicroserviceOptions>({
+  const app = await NestFactory.createMicroservice(AppModule, {
+    logger: ['log', 'error', 'warn', 'debug', 'verbose'],
     transport: Transport.RMQ,
     options: {
-      urls: [process.env.RABBITMQ_URL || 'amqp://rabbitmq:5672'],
-      queue: process.env.RABBITMQ_QUEUE || 'users_queue',
-      queueOptions: {
-          durable: false
-      },
+      // Usar la URL de RabbitMQ configurada como variable de entorno
+      urls: [process.env.RABBITMQ_URL || 'amqp://rabbitmq:5672'],  // RabbitMQ está en el contenedor "rabbitmq" en la red de Docker
+      queue: RabbitMQ.PaymentQueue,  // Asegúrate de que esta constante esté correctamente definida en ./common/constants
+      queueOptions: { durable: true },
     },
-  })
+  });
 
-  await app.startAllMicroservices();
-  await app.listen(process.env.PORT ?? 3000);
+  // Configuración global de pipes y serializadores
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    }),
+  );
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+
+  // Escuchar para conexiones
+  await app.listen();
+  console.log('Payment Microservice is listening');
 }
+
 bootstrap();
