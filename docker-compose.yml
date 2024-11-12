@@ -88,26 +88,6 @@ services:
       timeout: 5s
       retries: 5
 
-  payment-ms:
-    container_name: payment-ms
-    build:
-      context: ./payment-ms  # Asegúrate de que este sea el directorio correcto para el Dockerfile del microservicio de pagos
-      dockerfile: Dockerfile.payment
-    ports:
-      - '3001:3001'  # Expon el puerto 3001 para el microservicio de pagos
-    environment:
-      - NODE_ENV=development
-      - PORT=3001
-      - RABBITMQ_URL=amqp://rabbitmq:5672  # URL de RabbitMQ en la red de Docker
-      - RABBITMQ_QUEUE=payment_queue
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - app-network
-    restart: unless-stopped
-    command: npm run start:prod  # Ajusta este comando según sea necesario
-
 networks:
   app-network:
     driver: bridge
