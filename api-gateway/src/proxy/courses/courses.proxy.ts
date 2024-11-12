@@ -17,6 +17,7 @@ export class CoursesProxy extends BaseProxy<Course> {
             CREATE: 'courses.create',
             FIND_ALL: 'courses.findAll',
             FIND_ONE: 'courses.findOne',
+            FIND_ONE_WITH_DETAILS: 'courses.findOneWithDetails',
             UPDATE: 'courses.update',
             DELETE: 'courses.remove',
             ENROLL: 'courses.enroll',
@@ -41,6 +42,10 @@ export class CoursesProxy extends BaseProxy<Course> {
 
     async findOne(id: string): Promise<Course> {
         return this.sendWithRetry<Course>('FIND_ONE', { id });
+    }
+
+    async findOneWithDetails(id: string): Promise<Course> {
+        return this.send<Course>('FIND_ONE_WITH_DETAILS', { id });
     }
 
     async update(id: string, input: UpdateCourseInput): Promise<Course> {

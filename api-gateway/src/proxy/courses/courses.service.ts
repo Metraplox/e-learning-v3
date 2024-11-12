@@ -25,11 +25,26 @@ export class CoursesService {
     }
 
     async findAll(): Promise<Course[]> {
-        return lastValueFrom(this.coursesClient.send<Course[]>('courses.findAll', {}));
+        try {
+            return await firstValueFrom(
+                this.coursesClient.send<Course[]>('courses.findAll', {})
+            );
+        } catch (error) {
+            console.error('Error finding courses:', error);
+            throw new Error(`Failed to find courses: ${error.message}`);
+        }
     }
 
     async findOne(id: string): Promise<Course> {
-        return lastValueFrom(this.coursesClient.send('courses.findOne', { id }));
+        return lastValueFrom(
+            this.coursesClient.send('courses.findOne', { id })
+        );
+    }
+
+    async findOneWithDetails(id: string): Promise<Course> {
+        return lastValueFrom(
+            this.coursesClient.send('courses.findOneWithDetails', { id })
+        );
     }
 
     async enroll(userId: string, courseId: string): Promise<Enrollment> {

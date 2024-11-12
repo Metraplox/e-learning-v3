@@ -1,16 +1,9 @@
 import { NestFactory } from '@nestjs/core';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { AppModule } from './app.module';
-import {ValidationPipe} from "@nestjs/common";
-import {GraphQLModule} from "@nestjs/graphql";
-import {MicroserviceOptions, Transport} from '@nestjs/microservices';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-  }));
 
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.RMQ,
@@ -20,17 +13,15 @@ async function bootstrap() {
       queueOptions: {
         durable: false
       },
+      noAck: false,
+      prefetchCount: 1,
+      persistent: true,
     },
   });
 
-  GraphQLModule.forRoot({
-    autoSchemaFile: true,
-    apollo: {
-        playground: true,
-    }
-    });
-
   await app.startAllMicroservices();
   await app.listen(process.env.PORT ?? 3001);
+
+  console.log(`Courses microservice is running on port ${process.env.PORT ?? 3001}`);
 }
 bootstrap();

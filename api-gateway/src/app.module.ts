@@ -46,6 +46,12 @@ import {GraphQLResolver} from "./proxy/graphql.resolver";
                         queueOptions: {
                             durable: false
                         },
+                        noAck: false,
+                        prefetchCount: 1,
+                        persistent: true,
+                        timeout: 5000,
+                        retryAttempts: 3,
+                        retryDelay: 1000,
                     },
                 }),
                 inject: [ConfigService],

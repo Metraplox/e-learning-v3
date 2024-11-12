@@ -1,4 +1,4 @@
-import { Resolver, Query, Mutation, Args } from '@nestjs/graphql';
+import {Resolver, Query, Mutation, Args, ID} from '@nestjs/graphql';
 import {Req, UseGuards} from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
@@ -17,6 +17,17 @@ export class CoursesResolver {
     @UseGuards(JwtAuthGuard)
     async courses() {
         return this.coursesService.findAll();
+    }
+
+    @Query(() => Course, { name: 'course' })
+    async getCourse(@Args('id', { type: () => ID }) id: string) {
+        return this.coursesService.findOne(id);
+    }
+
+    @Query(() => Course, { name: 'courseDetails' })
+    @UseGuards(JwtAuthGuard)
+    async getCourseDetails(@Args('id', { type: () => ID }) id: string) {
+        return this.coursesService.findOneWithDetails(id);
     }
 
     @Mutation(() => Course)
