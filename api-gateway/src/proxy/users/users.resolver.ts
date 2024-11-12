@@ -68,4 +68,11 @@ export class UsersResolver {
     ) {
         return this.usersService.remove(id);
     }
+
+    @Query(() => User)
+    @UseGuards(JwtAuthGuard)
+    async getUserProfile(@Context() context): Promise<User> {
+        const userId = context.req.user.id; // Obtiene el ID del usuario desde el token JWT
+        return this.usersService.findOne(userId);
+    }
 }
