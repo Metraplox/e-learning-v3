@@ -8,13 +8,14 @@ import {PaymentStatus} from "../enums/payment-status.enum";
 export class Payment {
   @PrimaryGeneratedColumn('uuid')
   @Field(() => ID)
+  @Column()
   id: string;
 
-  @Column()
+  @Column('uuid')
   @Field()
   userId: string;
 
-  @Column()
+  @Column('uuid')
   @Field()
   courseId: string;
 
@@ -22,15 +23,19 @@ export class Payment {
   @Field()
   amount: number;
 
-  @Column()
-  @Field()
+  @Column({
+    type: 'enum',
+    enum: PaymentStatus,
+    default: PaymentStatus.PENDING
+  })
+  @Field(() => PaymentStatus)
   status: PaymentStatus;
+
+  @Column({ nullable: true })
+  @Field({ nullable: true })
+  webpayToken: string;
 
   @CreateDateColumn()
   @Field()
   createdAt: Date;
-
-  @Field()
-  @Column({ nullable: true })
-  webpayToken: string;
 }

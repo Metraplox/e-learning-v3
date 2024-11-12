@@ -7,6 +7,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import {ProxyModule} from "../proxy/proxy.module";
 
 @Module({
     imports: [
@@ -38,6 +39,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
                 inject: [ConfigService],
             },
         ]),
+        ProxyModule,
     ],
     providers: [AuthService, JwtStrategy, AuthResolver],
     exports: [AuthService],

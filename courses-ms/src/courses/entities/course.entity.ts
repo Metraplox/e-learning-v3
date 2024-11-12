@@ -1,47 +1,36 @@
 import { ObjectType, Field, Int, ID } from '@nestjs/graphql';
-import {PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn} from 'typeorm';
-import {IsNumber, IsPositive, IsString} from 'class-validator';
-import {CourseStatus} from "../enums/course-status.enum";
+import {PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany} from 'typeorm';
 
 @ObjectType()
 export class Course {
   @PrimaryGeneratedColumn('uuid')
-  @Field(() => ID, { description: 'The id of the course' })
+  @Field(() => ID)
   @Column()
-  @IsString()
-    id: string;
+  id: string;
 
-    @Field(() => String, { description: 'The name of the course' })
-    @Column()
-    @IsString()
-    title: string;
+  @Column()
+  @Field()
+  title: string;
 
-    @Field(() => String, { description: 'The description of the course' })
-    @Column()
-    description: string;
+  @Column('text')
+  @Field()
+  description: string;
 
-    @Field(() => Int, { description: 'The price of the course' })
-    @Column()
-    @IsPositive()
-    price: number;
+  @Column()
+  @Field()
+  teacherId: string;
 
-    @Field(() => Int, { description: 'The duration of the course' })
-    @Column()
-    @IsNumber()
-    @IsPositive()
-    duration: number = 0;
+  @Column('decimal', { precision: 10, scale: 2 })
+  @Field()
+  price: number;
 
-    @Field(() => String, { description: 'The teacher of the course' })
-    @Column()
-    teacherId: string;
+  @Column({ default: 0 })
+  @Field()
+  averageRating: number;
 
-    @Column({
-      type: 'enum',
-      enum: CourseStatus,
-      default: CourseStatus.DRAFT,
-    })
-    @Field(() => CourseStatus)
-    status: CourseStatus;
+  @Column({ default: 0 })
+  @Field()
+  totalRatings: number;
 
     @CreateDateColumn()
     @Field()

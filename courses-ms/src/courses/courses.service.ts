@@ -18,14 +18,13 @@ export class CoursesService {
         private enrollmentRepository: Repository<Enrollment>,
     ) {}
 
-    async create(createCourseInput: CreateCourseInput): Promise<Course> {
+    async create(createCourseInput: CreateCourseInput & { teacherId: string }): Promise<Course> {
         const course = this.courseRepository.create(createCourseInput);
         return await this.courseRepository.save(course);
     }
 
     async findAll(): Promise<Course[]> {
         return await this.courseRepository.find({
-            where: { status: CourseStatus.PUBLISHED },
         });
     }
 

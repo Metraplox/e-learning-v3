@@ -28,13 +28,6 @@ export class User {
     @Field(() => UserRole)
     role: UserRole;
 
-    // @ManyToOne(() => Course, (course) => course.students)
-    // @JoinTable()
-    // courses: Course[];
-
-    // @OneToMany(() => Course, (course) => course.teacher)
-    // teachingCourses: Course[];
-
     @CreateDateColumn()
     @Field()
     createdAt: Date;

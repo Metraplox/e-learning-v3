@@ -1,18 +1,75 @@
 import { Module } from '@nestjs/common';
-import { UsersModule } from './users/users.module';
-import { CoursesModule } from './courses/courses.module';
-import { PaymentModule } from './payment/payment.module';
-import { PaymentResolver } from './payment/payment.resolver';
-import {CoursesService} from "./courses/courses.service";
-import {CoursesResolver} from "./courses/courses.resolver";
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import {ClientsModule, Transport} from '@nestjs/microservices';
+import { getRabbitMQConfig } from '../config/rabbitmq.config';
+import { UsersProxy } from './users/users.proxy';
+import { CoursesProxy } from './courses/courses.proxy';
+import { PaymentsProxy } from './payment/payments.proxy';
+import {CoursesModule} from "./courses/courses.module";
 
 @Module({
-  imports: [
-      UsersModule,
-      CoursesModule,
-      PaymentModule,
-  ],
-  providers: [PaymentResolver, CoursesService, CoursesResolver],
-  exports: [CoursesService],
+    imports: [
+        ClientsModule.registerAsync([
+            {
+                name: 'USERS_SERVICE',
+                imports: [ConfigModule],
+                useFactory: async (configService: ConfigService) => ({
+                    transport: Transport.RMQ,
+                    options: {
+                        urls: [configService.get<string>('RABBITMQ_URL')],
+                        queue: configService.get<string>('RABBITMQ_QUEUE'),
+                        queueOptions: {
+                            durable: false
+                        },
+                    },
+                }),
+                inject: [ConfigService],
+            },
+            {
+                name: 'COURSES_SERVICE',
+                imports: [ConfigModule],
+                useFactory: async (configService: ConfigService) => ({
+                    transport: Transport.RMQ,
+                    options: {
+                        urls: [configService.get<string>('RABBITMQ_URL')],
+                        queue: configService.get<string>('COURSES_QUEUE'),
+                        queueOptions: {
+                            durable: false
+                        },
+                    },
+                }),
+                inject: [ConfigService],
+            },
+            {
+                name: 'PAYMENTS_SERVICE',
+                imports: [ConfigModule],
+                useFactory: async (configService: ConfigService) => ({
+                    transport: Transport.RMQ,
+                    options: {
+                        urls: [configService.get<string>('RABBITMQ_URL')],
+                        queue: configService.get<string>('PAYMENTS_QUEUE'),
+                        queueOptions: {
+                            durable: false
+                        },
+                    },
+                }),
+                inject: [ConfigService],
+            },
+        ]),
+        ConfigModule,
+        CoursesModule,
+    ],
+    providers: [
+        UsersProxy,
+        CoursesProxy,
+        PaymentsProxy,
+    ],
+    exports: [
+        ClientsModule,
+        UsersProxy,
+        CoursesProxy,
+        PaymentsProxy,
+        CoursesModule,
+    ],
 })
 export class ProxyModule {}
