@@ -1,54 +1,35 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {Inject, Injectable, InternalServerErrorException, NotFoundException} from '@nestjs/common';
 import { ClientProxy, ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
 import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
 import { User } from './models/user.model';
-import { lastValueFrom } from 'rxjs';
+import {firstValueFrom, lastValueFrom} from 'rxjs';
 
 @Injectable()
 export class UsersService {
-    private client: ClientProxy;
-
-    constructor(private readonly configService: ConfigService) {
-        this.client = ClientProxyFactory.create({
-            transport: Transport.RMQ,
-            options: {
-                urls: [this.configService.get<string>('RABBITMQ_URL')],
-                queue: this.configService.get<string>('RABBITMQ_QUEUE') || 'users_queue',
-                queueOptions: {
-                    durable: false
-                },
-            },
-        });
-    }
+    constructor(
+        @Inject('USERS_SERVICE') private readonly usersClient: ClientProxy
+    ) {}
 
     async onModuleInit() {
-        await this.client.connect();
+        await this.usersClient.connect();
     }
 
     async create(createUserInput: CreateUserInput): Promise<User> {
         try {
-            const response = await lastValueFrom(
-                this.client.send<User>('users.create', createUserInput)
+            return await firstValueFrom(
+                this.usersClient.send('users.create', createUserInput)
             );
-
-            if (!response) {
-                throw new InternalServerErrorException('Failed to create user');
-            }
-
-            return response;
         } catch (error) {
-            throw new InternalServerErrorException(
-                `Error creating user: ${error.message || 'Unknown error'}`
-            );
+            throw new InternalServerErrorException(`Error creating user: ${error.message}`);
         }
     }
 
     async findAll(): Promise<User[]> {
         try {
             const response = await lastValueFrom(
-                this.client.send<User[]>('users.findAll', {})
+                this.usersClient.send<User[]>('users.findAll', {})
             );
             return response;
         } catch (error) {
@@ -58,19 +39,18 @@ export class UsersService {
 
     async findOne(id: string): Promise<User> {
         try {
-            const response = await lastValueFrom(
-                this.client.send<User>('users.findOne', { id })
+            return await firstValueFrom(
+                this.usersClient.send('users.findOne', { id })
             );
-            return response;
         } catch (error) {
-            throw new InternalServerErrorException(`Error fetching user: ${error.message}`);
+            throw new NotFoundException(`User with ID "${id}" not found`);
         }
     }
 
     async findByEmail(email: string): Promise<User> {
         try {
             const response = await lastValueFrom(
-                this.client.send<User>('users.findByEmail', { email })
+                this.usersClient.send<User>('users.findByEmail', { email })
             );
             return response;
         } catch (error) {
@@ -81,7 +61,7 @@ export class UsersService {
     async update(id: string, updateUserInput: UpdateUserInput): Promise<User> {
         try {
             const response = await lastValueFrom(
-                this.client.send<User>('users.update', { id, updateUserInput })
+                this.usersClient.send<User>('users.update', { id, updateUserInput })
             );
             return response;
         } catch (error) {
@@ -92,7 +72,7 @@ export class UsersService {
     async remove(id: string): Promise<boolean> {
         try {
             const response = await lastValueFrom(
-                this.client.send<boolean>('users.remove', { id })
+                this.usersClient.send<boolean>('users.remove', { id })
             );
             return response;
         } catch (error) {
@@ -101,6 +81,6 @@ export class UsersService {
     }
 
     async onApplicationShutdown() {
-        await this.client.close();
+        await this.usersClient.close();
     }
 }

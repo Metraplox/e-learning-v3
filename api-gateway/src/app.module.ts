@@ -42,7 +42,7 @@ import {GraphQLResolver} from "./proxy/graphql.resolver";
                     transport: Transport.RMQ,
                     options: {
                         urls: [configService.get<string>('RABBITMQ_URL')],
-                        queue: configService.get<string>('COURSES_QUEUE'), // Asegurarse de que 'COURSES_QUEUE' esté bien definido
+                        queue: configService.get<string>('COURSES_QUEUE'),
                         queueOptions: {
                             durable: false
                         },

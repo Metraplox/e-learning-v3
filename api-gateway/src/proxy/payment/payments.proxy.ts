@@ -6,29 +6,19 @@ import { Payment } from './models/payment.model';
 import { CreatePaymentInput } from './dto/create-payment.input';
 import { PaginatedPayments } from './interfaces/paginated-payments.interface';
 import { PaymentStatus } from './enums/payment-status.enum';
+import {lastValueFrom} from "rxjs";
 
 @Injectable()
-export class PaymentsProxy extends BaseProxy<Payment> {
+@Injectable()
+export class PaymentsProxy {
     constructor(
-        @Inject('PAYMENTS_SERVICE') client: ClientProxy
-    ) {
-        super(client, {
-            CREATE: 'payments.create',
-            FIND_ALL: 'payments.findAll',
-            FIND_ONE: 'payments.findOne',
-            PROCESS: 'payments.process',
-            CONFIRM: 'payments.confirm',
-            CANCEL: 'payments.cancel',
-            REFUND: 'payments.refund',
-            GET_USER_PAYMENTS: 'payments.getUserPayments',
-            GET_PAYMENT_STATS: 'payments.getStats',
-            VERIFY_PAYMENT: 'payments.verify',
-            UPDATE_STATUS: 'payments.updateStatus'
-        });
-    }
+        @Inject('PAYMENTS_SERVICE') private readonly paymentsClient: ClientProxy
+    ) {}
 
-    async create(input: CreatePaymentInput): Promise<Payment> {
-        return this.send<Payment>('CREATE', input);
+    async createPayment(input: CreatePaymentInput): Promise<Payment> {
+        return lastValueFrom(
+            this.paymentsClient.send<Payment>('payments.create', input)
+        );
     }
 
     async findAll(options: {
@@ -39,11 +29,15 @@ export class PaymentsProxy extends BaseProxy<Payment> {
         toDate?: Date;
         userId?: string;
     }): Promise<PaginatedPayments> {
-        return this.send<PaginatedPayments>('FIND_ALL', options);
+        return lastValueFrom(
+            this.paymentsClient.send<PaginatedPayments>('payments.findAll', options)
+        );
     }
 
     async findOne(id: string): Promise<Payment> {
-        return this.sendWithRetry<Payment>('FIND_ONE', { id });
+        return lastValueFrom(
+            this.paymentsClient.send<Payment>('payments.findOne', { id })
+        );
     }
 
     async processPayment(params: {
@@ -51,59 +45,59 @@ export class PaymentsProxy extends BaseProxy<Payment> {
         paymentMethodId: string;
         amount: number;
     }): Promise<Payment> {
-        return this.send('PROCESS', params);
+        return lastValueFrom(
+            this.paymentsClient.send<Payment>('PROCESS', params)
+        );
     }
 
-    async confirmPayment(token: string): Promise<Payment> {
-        return this.send('CONFIRM', { token });
-    }
-
-    async cancelPayment(id: string, reason?: string): Promise<boolean> {
-        return this.send('CANCEL', { id, reason });
-    }
-
-    async refundPayment(id: string, amount?: number): Promise<Payment> {
-        return this.send('REFUND', { id, amount });
-    }
-
-    async getUserPayments(
-        userId: string,
-        options: {
-            page?: number;
-            limit?: number;
-            status?: PaymentStatus;
-            fromDate?: Date;
-            toDate?: Date;
-        }
-    ): Promise<PaginatedPayments> {
-        return this.send('GET_USER_PAYMENTS', { userId, ...options });
-    }
-
-    async getPaymentStats(params: {
-        fromDate: Date;
-        toDate: Date;
-        groupBy?: string;
-    }): Promise<any> {
-        return this.send('GET_PAYMENT_STATS', params);
-    }
-
-    async verifyPayment(paymentId: string): Promise<boolean> {
-        return this.send('VERIFY_PAYMENT', { paymentId });
-    }
-
-    async updateStatus(params: {
-        paymentId: string;
-        status: PaymentStatus;
-        metadata?: any;
-    }): Promise<Payment> {
-        return this.send('UPDATE_STATUS', params);
-    }
-
-    onPaymentStatusUpdated(paymentId: string) {
-        return this.emit('PAYMENT_STATUS_UPDATED', { paymentId });
-    }
-
-    onPaymentRefunded(paymentId: string) {
-        return this.emit('PAYMENT_REFUNDED', { paymentId });
-    }
+    // async confirmPayment(token: string): Promise<Payment> {
+    //     return lastValueFrom(
+    //         this.paymentsClient.send<Payment>('CONFIRM', { token })
+    //     );
+    // }
+    //
+    // async refundPayment(id: string, amount?: number): Promise<Payment> {
+    //     return this.paymentsClient.send<Payment>('REFUND', { id, amount });
+    // }
+    //
+    // async getUserPayments(
+    //     userId: string,
+    //     options: {
+    //         page?: number;
+    //         limit?: number;
+    //         status?: PaymentStatus;
+    //         fromDate?: Date;
+    //         toDate?: Date;
+    //     }
+    // ): Promise<PaginatedPayments> {
+    //     return this.paymentsClient.send<Payment>('GET_USER_PAYMENTS', { userId, ...options });
+    // }
+    //
+    // async getPaymentStats(params: {
+    //     fromDate: Date;
+    //     toDate: Date;
+    //     groupBy?: string;
+    // }): Promise<any> {
+    //     return this.paymentsClient.send<Payment>('GET_PAYMENT_STATS', params);
+    // }
+    //
+    // async verifyPayment(paymentId: string): Promise<boolean> {
+    //     return this.paymentsClient.send<Payment>('VERIFY_PAYMENT', { paymentId });
+    // }
+    //
+    // async updateStatus(params: {
+    //     paymentId: string;
+    //     status: PaymentStatus;
+    //     metadata?: any;
+    // }): Promise<Payment> {
+    //     return this.paymentsClient.send<Payment>('UPDATE_STATUS', params);
+    // }
+    //
+    // onPaymentStatusUpdated(paymentId: string) {
+    //     return this.paymentsClient.send<Payment>('PAYMENT_STATUS_UPDATED', { paymentId });
+    // }
+    //
+    // onPaymentRefunded(paymentId: string) {
+    //     return this.paymentsClient.send<Payment>('PAYMENT_REFUNDED', { paymentId });
+    // }
 }
