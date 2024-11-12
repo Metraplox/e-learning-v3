@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import {Inject, Injectable, InternalServerErrorException, NotFoundException} from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import {firstValueFrom, lastValueFrom} from 'rxjs';
 import { CreateCourseInput } from './dto/create-course.input';
@@ -16,20 +16,34 @@ export class CoursesService {
     }
 
     async create(createCourseInput: CreateCourseInput, user: any): Promise<Course> {
-        const courseData = {
-            ...createCourseInput,
-            teacherId: this.getUserId(user)
-        };
-
-        return lastValueFrom(this.coursesClient.send<Course>('courses.create', courseData));
+        try {
+            const courseData = {
+                ...createCourseInput,
+                teacherId: this.getUserId(user),
+            };
+            return await lastValueFrom(this.coursesClient.send<Course>('courses.create', courseData));
+        } catch (error) {
+            console.error('Error creating course:', error);
+            throw new InternalServerErrorException('Error creating course');
+        }
     }
 
     async findAll(): Promise<Course[]> {
-        return lastValueFrom(this.coursesClient.send<Course[]>('courses.findAll', {}));
+        try {
+            return await lastValueFrom(this.coursesClient.send('courses.findAll', {}));
+        } catch (error) {
+            console.error('Error fetching courses:', error);
+            throw new InternalServerErrorException('Error fetching courses');
+        }
     }
 
     async findOne(id: string): Promise<Course> {
-        return lastValueFrom(this.coursesClient.send('courses.findOne', { id }));
+        try {
+            return await lastValueFrom(this.coursesClient.send('courses.findOne', { id }));
+        } catch (error) {
+            console.error(`Error fetching course with ID "${id}":`, error);
+            throw new NotFoundException(`Course with ID "${id}" not found`);
+        }
     }
 
     async enroll(userId: string, courseId: string): Promise<Enrollment> {

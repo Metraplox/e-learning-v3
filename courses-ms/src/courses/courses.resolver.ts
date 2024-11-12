@@ -14,6 +14,11 @@ export class CoursesResolver {
     return this.coursesService.create(createCourseInput);
   }
 
+  @MessagePattern('courses.findAvailable')
+  async findAvailable() {
+    return this.coursesService.findAvailable();
+  }
+
   @Query(() => Course, { name: 'course' })
   findOne(@Args('id', { type: () => Int }) id: string) {
     return this.coursesService.findOne(id);
@@ -31,9 +36,16 @@ export class CoursesResolver {
     return this.coursesService.remove(id);
   }
 
-  @MessagePattern('courses.find-all')
+  @MessagePattern('courses.findAll')
   async findAll() {
-    return this.coursesService.findAll();
+    try {
+      const courses = await this.coursesService.findAll();
+      console.log('Courses found:', courses.length);
+      return courses;
+    } catch (error) {
+      console.error('Error in findAll:', error);
+      return [];
+    }
   }
 
   @MessagePattern('courses.create')

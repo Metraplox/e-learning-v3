@@ -1,4 +1,3 @@
-// courses-ms/src/courses/courses.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -6,7 +5,6 @@ import { Course } from './entities/course.entity';
 import { Enrollment } from './entities/enrollment.entity';
 import {EnrollCourseInput} from "./dto/inputs/enroll-course.input";
 import {CreateCourseInput} from "./dto/inputs/create-course.input";
-import {CourseStatus} from "./enums/course-status.enum";
 import {UpdateCourseInput} from "./dto/inputs/update-course.input";
 
 @Injectable()
@@ -24,7 +22,18 @@ export class CoursesService {
     }
 
     async findAll(): Promise<Course[]> {
-        return await this.courseRepository.find({
+        return this.courseRepository.find({
+            order: {
+                createdAt: 'DESC'
+            }
+        });
+    }
+
+    async findAvailable(): Promise<Course[]> {
+        return this.courseRepository.find({
+            order: {
+                createdAt: 'DESC'
+            }
         });
     }
 

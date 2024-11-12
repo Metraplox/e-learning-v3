@@ -1,4 +1,3 @@
-
 services:
   api-gateway:
     container_name: api-gateway
@@ -16,6 +15,8 @@ services:
     depends_on:
       users:
         condition: service_started
+      courses:
+        condition: service_started
       rabbitmq:
         condition: service_healthy
     networks:
@@ -26,7 +27,7 @@ services:
     container_name: rabbitmq
     image: rabbitmq:3-management
     ports:
-      - '5672:5672'  # AMQP protocol port
+      - '5672:5672'  # AMQP protocol port 
       - '15672:15672'  # Management UI port
     networks:
       - app-network
@@ -68,7 +69,35 @@ services:
     restart: unless-stopped
     command: npm run start:dev
 
-  ##COURSES
+  courses:
+    container_name: courses-ms
+    build:
+      context: ./courses-ms
+      dockerfile: Dockerfile
+    ports:
+      - '3001:3001'
+    volumes:
+      - ./courses-ms:/usr/src/app
+      - /usr/src/app/node_modules
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=courses_postgres_db
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_DATABASE=courses_db
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_QUEUE=courses_queue
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      courses_db:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+    command: npm run start:dev
+
   courses_db:
     container_name: courses_postgres_db
     image: postgres:15.3-alpine

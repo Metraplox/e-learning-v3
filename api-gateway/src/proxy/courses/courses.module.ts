@@ -11,13 +11,13 @@ import {ClientsModule, Transport} from "@nestjs/microservices";
             {
                 name: 'COURSES_SERVICE',
                 imports: [ConfigModule],
-                useFactory: (configService: ConfigService) => ({
+                useFactory: async (configService: ConfigService) => ({
                     transport: Transport.RMQ,
                     options: {
                         urls: [configService.get<string>('RABBITMQ_URL')],
-                        queue: configService.get<string>('COURSES_QUEUE') || 'courses_queue',
+                        queue: configService.get<string>('COURSES_QUEUE'),
                         queueOptions: {
-                            durable: false,
+                            durable: false
                         },
                     },
                 }),
