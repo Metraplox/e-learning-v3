@@ -1,13 +1,14 @@
-import {ConflictException, Injectable, NotFoundException} from '@nestjs/common';
+import { ConflictException, Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
-import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
       @InjectRepository(User)
       private readonly userRepository: Repository<User>,
@@ -15,7 +16,7 @@ export class UsersService {
 
   async create(createUserInput: CreateUserInput): Promise<User> {
     try {
-      // 1. Verificación de usuario existente mejorada
+      // Verificación de usuario existente mejorada
       const existingUser = await this.userRepository.findOne({
         where: [
           { email: createUserInput.email },
@@ -31,16 +32,24 @@ export class UsersService {
         );
       }
 
-      // 2. Crear nuevo usuario
+      // Crear nuevo usuario
       const user = this.userRepository.create(createUserInput);
-      return await this.userRepository.save(user);
+      const savedUser = await this.userRepository.save(user);
+
+      this.logger.log(`User created successfully: ${savedUser.id}`);
+      return savedUser;
 
     } catch (error) {
-      // 3. Manejo específico de errores de base de datos
-      if (error.code === '23505') {
+      this.logger.error(`Error creating user: ${error.message}`, error.stack);
+
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+      if (error.code === '23505') { // PostgreSQL unique violation
         throw new ConflictException('User already exists');
       }
-      throw error;
+
+      throw new InternalServerErrorException('Error creating user');
     }
   }
 
@@ -51,7 +60,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException(`User with ID "${id}" not found`);
+      this.logger.warn(`User not found with ID: ${id}`);
     }
 
     return user;
@@ -64,7 +73,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException(`User with email "${email}" not found`);
+      this.logger.warn(`User not found with email: ${email}`);
     }
 
     return user;
@@ -74,33 +83,48 @@ export class UsersService {
     const user = await this.userRepository
         .createQueryBuilder('user')
         .where('user.email = :email', { email })
-        .addSelect('user.password') // Explícitamente seleccionar password
+        .addSelect('user.password')
         .getOne();
+
+    if (!user) {
+      this.logger.warn(`User not found with email: ${email}`);
+    }
 
     return user;
   }
 
-  async update(id: string, updateUserInput: UpdateUserInput): Promise<User> {
-    const user = await this.userRepository.preload({
-      id: id,
-      ...updateUserInput,
+  async findAll(): Promise<User[]> {
+    return this.userRepository.find({
+      select: ['id', 'username', 'email', 'role', 'createdAt', 'updatedAt']
     });
+  }
 
-    if (!user) {
-      throw new NotFoundException(`User with ID "${id}" not found`);
+  async update(id: string, updateUserInput: UpdateUserInput): Promise<User> {
+    try {
+      const user = await this.userRepository.preload({
+        id: id,
+        ...updateUserInput,
+      });
+
+      if (!user) {
+        this.logger.warn(`User not found for update with ID: ${id}`);
+        return null;
+      }
+
+      return await this.userRepository.save(user);
+    } catch (error) {
+      this.logger.error(`Error updating user: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Error updating user');
     }
-
-    await this.userRepository.save(user);
-    const { password, ...result } = user;
-    return result as User;
   }
 
   async remove(id: string): Promise<boolean> {
-    const result = await this.userRepository.delete(id);
-    return result.affected > 0;
-  }
-
-    async findAll(): Promise<User[]> {
-        return this.userRepository.find();
+    try {
+      const result = await this.userRepository.delete(id);
+      return result.affected > 0;
+    } catch (error) {
+      this.logger.error(`Error removing user: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Error removing user');
     }
+  }
 }

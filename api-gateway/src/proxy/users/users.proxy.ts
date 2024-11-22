@@ -3,60 +3,38 @@ import { ClientProxy } from '@nestjs/microservices';
 import { BaseProxy } from '../shared/base.proxy';
 import { User } from './models/user.model';
 import { CreateUserInput } from './dto/create-user.input';
-import { UpdateUserInput } from './dto/update-user.input';
-import { PaginatedUsers } from './interfaces/paginated-users.interface';
+
+const USER_MESSAGE_PATTERNS = {
+    CREATE: 'users.create',
+    FIND_ALL: 'users.findAll',
+    FIND_ONE: 'users.findOne',
+    FIND_BY_EMAIL: 'users.findByEmail',
+    UPDATE: 'users.update',
+    DELETE: 'users.remove',
+    VALIDATE: 'users.validate'
+} as const;
 
 @Injectable()
 export class UsersProxy extends BaseProxy<User> {
     constructor(
         @Inject('USERS_SERVICE') client: ClientProxy
     ) {
-        super(client, {
-            CREATE: 'users.create',
-            FIND_ALL: 'users.findAll',
-            FIND_ONE: 'users.findOne',
-            UPDATE: 'users.update',
-            DELETE: 'users.delete',
-        });
+        super(client, 'USERS_SERVICE', USER_MESSAGE_PATTERNS);
     }
 
     async create(input: CreateUserInput): Promise<User> {
-        return this.send<User>('CREATE', input);
-    }
-
-    async findAll(options: {
-        page?: number;
-        limit?: number;
-        role?: string;
-    }): Promise<PaginatedUsers> {
-        return this.send<PaginatedUsers>('FIND_ALL', options);
-    }
-
-    async findOne(id: string): Promise<User> {
-        return this.send<User>('FIND_ONE', { id });
-    }
-
-    async update(id: string, input: UpdateUserInput): Promise<User> {
-        return this.send('UPDATE', { id, ...input });
+        return this.sendWithRetry<User>('CREATE', input);
     }
 
     async findByEmail(email: string): Promise<User> {
         return this.send<User>('FIND_BY_EMAIL', { email });
     }
 
-    async validateUser(token: string): Promise<User> {
-        return this.send('VALIDATE', { token });
+    async validate(token: string): Promise<User> {
+        return this.send<User>('VALIDATE', { token });
     }
 
-    async changePassword(
-        userId: string,
-        oldPassword: string,
-        newPassword: string
-    ): Promise<boolean> {
-        return this.send('CHANGE_PASSWORD', {
-            userId,
-            oldPassword,
-            newPassword,
-        });
+    async findAll(): Promise<User[]> {
+        return this.send<User[]>('FIND_ALL', {});
     }
 }

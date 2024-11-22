@@ -1,35 +1,53 @@
 import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, Observable } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
+import { Logger } from '@nestjs/common';
 
 export abstract class BaseProxy<T = any> {
+    protected readonly logger = new Logger(this.constructor.name);
+
     constructor(
         protected readonly client: ClientProxy,
+        protected readonly serviceName: string,
         protected readonly patterns: Record<string, string>
     ) {}
 
     protected async send<R = T>(pattern: string, data: any): Promise<R> {
-        return firstValueFrom(this.client.send<R>(this.patterns[pattern], data));
+        try {
+            this.logger.debug(`Sending to ${this.serviceName}: ${pattern}`);
+            const response = await firstValueFrom(
+                this.client.send<R>(this.patterns[pattern], data)
+            );
+            return response;
+        } catch (error) {
+            this.logger.error(
+                `Error in ${this.serviceName} - ${pattern}:`,
+                error.message
+            );
+            throw error;
+        }
     }
 
-    protected async sendWithRetry<R = T>(pattern: string, data: any, retries = 3): Promise<R> {
-        let attempt = 0;
-        let result: R | null = null;
-        while (attempt < retries) {
+    protected async sendWithRetry<R = T>(
+        pattern: string,
+        data: any
+    ): Promise<R> {
+        const retries = 3;
+        const delay = 1000;
+        let lastError: any;
+
+        for (let attempt = 1; attempt <= retries; attempt++) {
             try {
-                result = await this.send<R>(pattern, data);
-                break;
+                return await this.send<R>(pattern, data);
             } catch (error) {
-                if (++attempt >= retries) this.handleError(error);
+                lastError = error;
+                this.logger.warn(
+                    `Retry ${attempt}/${retries} for ${pattern} in ${this.serviceName}`
+                );
+                if (attempt < retries) {
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
             }
         }
-        return result;
-    }
-
-    protected emit(pattern: string, data: any): void {
-        this.client.emit(this.patterns[pattern], data);
-    }
-
-    protected handleError(error: any): never {
-        throw new Error(`Request failed: ${error.message}`);
+        throw lastError;
     }
 }

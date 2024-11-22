@@ -1,55 +1,45 @@
-import { Resolver, Query, Mutation, Args, Int } from '@nestjs/graphql';
+import { Resolver, Query, Mutation, Args } from '@nestjs/graphql';
+import { Controller } from '@nestjs/common';
+import { MessagePattern, Payload } from '@nestjs/microservices';
 import { CoursesService } from './courses.service';
 import { Course } from './entities/course.entity';
 import { CreateCourseInput } from './dto/inputs/create-course.input';
-import { UpdateCourseInput } from './dto/inputs/update-course.input';
-import {MessagePattern} from "@nestjs/microservices";
 
-@Resolver()
+@Resolver(() => Course)
+@Controller()
 export class CoursesResolver {
   constructor(private readonly coursesService: CoursesService) {}
 
-  @Mutation(() => Course)
-  createCourse(@Args('createCourseInput') createCourseInput: CreateCourseInput) {
-    return this.coursesService.create(createCourseInput);
-  }
-
-  @MessagePattern('courses.findAvailable')
-  async findAvailable() {
-    return this.coursesService.findAvailable();
+  @Query(() => [Course], { name: 'courses' })
+  async findAll(): Promise<Course[]> {
+    return this.coursesService.findAll();
   }
 
   @Query(() => Course, { name: 'course' })
-  findOne(@Args('id', { type: () => Int }) id: string) {
+  async findOne(@Args('id') id: string): Promise<Course> {
     return this.coursesService.findOne(id);
   }
 
-  @Mutation(() => Course, { name: 'updateCourse' })
-  updateCourse(
-      @Args('updateCourseInput') updateCourseInput: UpdateCourseInput
-  ) {
-    return this.coursesService.update(updateCourseInput);
-  }
-
   @Mutation(() => Course)
-  removeCourse(@Args('id', { type: () => Int }) id: number) {
-    return this.coursesService.remove(id);
+  async createCourse(
+      @Args('createCourseInput') createCourseInput: CreateCourseInput,
+  ): Promise<Course> {
+    return this.coursesService.create(createCourseInput);
   }
 
+  // RabbitMQ Message Patterns
   @MessagePattern('courses.findAll')
-  async findAll() {
-    try {
-      const courses = await this.coursesService.findAll();
-      console.log('Courses found:', courses.length);
-      return courses;
-    } catch (error) {
-      console.error('Error in findAll:', error);
-      return [];
-    }
+  async findAllMessage(): Promise<Course[]> {
+    return this.coursesService.findAll();
+  }
+
+  @MessagePattern('courses.findOne')
+  async findOneMessage(@Payload() data: { id: string }): Promise<Course> {
+    return this.coursesService.findOne(data.id);
   }
 
   @MessagePattern('courses.create')
-  async create(data: CreateCourseInput & { teacherId: string }) {
-    return this.coursesService.create(data);
+  async createMessage(@Payload() createCourseInput: CreateCourseInput): Promise<Course> {
+    return this.coursesService.create(createCourseInput);
   }
 }

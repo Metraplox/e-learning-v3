@@ -8,8 +8,12 @@ export const getRabbitMQConfig = (configService: ConfigService): ClientsModuleOp
         options: {
             urls: [configService.get<string>('RABBITMQ_URL','amqp://rabbitmq:5672')],
             queue: configService.get<string>('RABBITMQ_QUEUE', 'users_queue'),
-            queueOptions: {
-                durable: false
+            prefetchCount: 1,
+            isGlobalPrefetchCount: true,
+            noAck: false,
+            socketOptions: {
+                heartbeatIntervalInSeconds: 60,
+                reconnectTimeInSeconds: 5,
             },
         },
     },
@@ -19,8 +23,12 @@ export const getRabbitMQConfig = (configService: ConfigService): ClientsModuleOp
         options: {
             urls: [configService.get<string>('RABBITMQ_URL')],
             queue: configService.get<string>('COURSES_QUEUE', 'courses_queue'),
-            queueOptions: {
-                durable: false
+            prefetchCount: 1,
+            isGlobalPrefetchCount: true,
+            noAck: false,
+            socketOptions: {
+                heartbeatIntervalInSeconds: 60,
+                reconnectTimeInSeconds: 5,
             },
         },
     },
@@ -30,8 +38,12 @@ export const getRabbitMQConfig = (configService: ConfigService): ClientsModuleOp
         options: {
             urls: [configService.get<string>('RABBITMQ_URL')],
             queue: configService.get<string>('PAYMENTS_QUEUE', 'payments_queue'),
-            queueOptions: {
-                durable: false
+            prefetchCount: 1,
+            isGlobalPrefetchCount: true,
+            noAck: false,
+            socketOptions: {
+                heartbeatIntervalInSeconds: 60,
+                reconnectTimeInSeconds: 5,
             },
         },
     },

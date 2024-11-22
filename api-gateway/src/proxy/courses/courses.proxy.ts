@@ -13,7 +13,7 @@ export class CoursesProxy extends BaseProxy<Course> {
     constructor(
         @Inject('COURSES_SERVICE') client: ClientProxy
     ) {
-        super(client, {
+        super(client, 'COURSES_SERVICE', {
             CREATE: 'courses.create',
             FIND_ALL: 'courses.findAll',
             FIND_ONE: 'courses.findOne',
@@ -83,11 +83,11 @@ export class CoursesProxy extends BaseProxy<Course> {
         return this.send('GET_COURSE_STATS', { courseId });
     }
 
-    onCourseUpdated(courseId: string) {
-        return this.emit('COURSE_UPDATED', { courseId });
+    async onCourseUpdated(courseId: string) {
+        return this.client.emit('COURSE_UPDATED', { courseId });
     }
 
-    onEnrollmentUpdated(enrollmentId: string) {
-        return this.emit('ENROLLMENT_UPDATED', { enrollmentId });
+    async onEnrollmentUpdated(enrollmentId: string) {
+        return this.client.emit('ENROLLMENT_UPDATED', { enrollmentId });
     }
 }

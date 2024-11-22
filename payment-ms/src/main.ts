@@ -1,8 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import {MicroserviceOptions, Transport} from '@nestjs/microservices';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { Logger } from '@nestjs/common';
 
 async function bootstrap() {
+  const logger = new Logger('Payments-MS');
   const app = await NestFactory.create(AppModule);
 
   app.connectMicroservice<MicroserviceOptions>({
@@ -11,12 +13,27 @@ async function bootstrap() {
       urls: [process.env.RABBITMQ_URL || 'amqp://rabbitmq:5672'],
       queue: process.env.RABBITMQ_QUEUE || 'payments_queue',
       queueOptions: {
-          durable: false
+        durable: true,
+        persistent: true
+      },
+      prefetchCount: 1,
+      isGlobalPrefetchCount: true,
+      noAck: false,
+      socketOptions: {
+        heartbeatIntervalInSeconds: 60,
+        reconnectTimeInSeconds: 5,
       },
     },
-  })
+  });
 
-  await app.startAllMicroservices();
-  await app.listen(process.env.PORT ?? 3002);
+  try {
+    await app.startAllMicroservices();
+    logger.log('Payments Microservice is running');
+    await app.listen(process.env.PORT ?? 3002);
+    logger.log(`Payments HTTP server is running on: ${await app.getUrl()}`);
+  } catch (error) {
+    logger.error('Error starting microservice:', error);
+    process.exit(1);
+  }
 }
 bootstrap();

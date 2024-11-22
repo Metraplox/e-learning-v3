@@ -1,9 +1,8 @@
 import {Inject, Injectable, InternalServerErrorException, NotFoundException} from '@nestjs/common';
-import { ClientProxy, ClientProxyFactory, Transport } from '@nestjs/microservices';
-import { ConfigService } from '@nestjs/config';
-import { CreateUserInput } from './dto/create-user.input';
-import { UpdateUserInput } from './dto/update-user.input';
-import { User } from './models/user.model';
+import {ClientProxy} from '@nestjs/microservices';
+import {CreateUserInput} from './dto/create-user.input';
+import {UpdateUserInput} from './dto/update-user.input';
+import {User} from './models/user.model';
 import {firstValueFrom, lastValueFrom} from 'rxjs';
 
 @Injectable()
@@ -28,10 +27,9 @@ export class UsersService {
 
     async findAll(): Promise<User[]> {
         try {
-            const response = await lastValueFrom(
+            return await lastValueFrom(
                 this.usersClient.send<User[]>('users.findAll', {})
             );
-            return response;
         } catch (error) {
             throw new InternalServerErrorException(`Error fetching users: ${error.message}`);
         }
@@ -49,10 +47,9 @@ export class UsersService {
 
     async findByEmail(email: string): Promise<User> {
         try {
-            const response = await lastValueFrom(
-                this.usersClient.send<User>('users.findByEmail', { email })
+            return await lastValueFrom(
+                this.usersClient.send<User>('users.findByEmail', {email})
             );
-            return response;
         } catch (error) {
             throw new InternalServerErrorException(`Error fetching user by email: ${error.message}`);
         }
@@ -60,10 +57,9 @@ export class UsersService {
 
     async update(id: string, updateUserInput: UpdateUserInput): Promise<User> {
         try {
-            const response = await lastValueFrom(
-                this.usersClient.send<User>('users.update', { id, updateUserInput })
+            return await lastValueFrom(
+                this.usersClient.send<User>('users.update', {id, updateUserInput})
             );
-            return response;
         } catch (error) {
             throw new InternalServerErrorException(`Error updating user: ${error.message}`);
         }
@@ -71,10 +67,9 @@ export class UsersService {
 
     async remove(id: string): Promise<boolean> {
         try {
-            const response = await lastValueFrom(
-                this.usersClient.send<boolean>('users.remove', { id })
+            return await lastValueFrom(
+                this.usersClient.send<boolean>('users.remove', {id})
             );
-            return response;
         } catch (error) {
             throw new InternalServerErrorException(`Error removing user: ${error.message}`);
         }

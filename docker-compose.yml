@@ -1,106 +1,134 @@
 services:
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3-management
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+
   api-gateway:
     container_name: api-gateway
     build:
       context: ./api-gateway
       dockerfile: Dockerfile
-      target: production
     ports:
       - '4000:4000'
     environment:
-      - NODE_ENV=development
       - PORT=4000
+      - NODE_ENV=development
       - JWT_SECRET=CoD3r0$-AP1-G4t3w4y
       - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_QUEUE=users_queue
+      - COURSES_QUEUE=courses_queue
+      - PAYMENTS_QUEUE=payment_queue
+    networks:
+      - app-network
     depends_on:
-      users:
-        condition: service_started
-      courses:
-        condition: service_started
       rabbitmq:
         condition: service_healthy
-    networks:
-      - app-network
-    restart: unless-stopped
+      users-ms:
+        condition: service_started
+      courses-ms:
+        condition: service_started
 
-  rabbitmq:
-    container_name: rabbitmq
-    image: rabbitmq:3-management
-    ports:
-      - '5672:5672'  # AMQP protocol port 
-      - '15672:15672'  # Management UI port
-    networks:
-      - app-network
-    healthcheck:
-      test: [ "CMD", "rabbitmq-diagnostics", "check_port_connectivity" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-
-  users:
+  users-ms:
     container_name: users-ms
     build:
       context: ./users-ms
       dockerfile: Dockerfile
     ports:
       - '3000:3000'
-    volumes:
-      - ./users-ms:/usr/src/app
-      - /usr/src/app/node_modules
     environment:
+      - PORT=3000
       - NODE_ENV=development
-      - DB_HOST=users_postgres_db
+      - DB_HOST=users_db
       - DB_PORT=5432
       - DB_USERNAME=postgres
       - DB_PASSWORD=postgres
       - DB_DATABASE=users_db
       - RABBITMQ_URL=amqp://rabbitmq:5672
       - RABBITMQ_QUEUE=users_queue
+    networks:
+      - app-network
     depends_on:
       rabbitmq:
         condition: service_healthy
-      postgres:
+      users_db:
         condition: service_healthy
+    restart: unless-stopped  # Importante: reiniciar si falla
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  users_db:
+    container_name: users_db
+    image: postgres:15.3-alpine
+    ports:
+      - '5433:5432'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=users_db
+    volumes:
+      - users_postgres_data:/var/lib/postgresql/data
     networks:
       - app-network
-    restart: unless-stopped
-    command: npm run start:dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  courses:
+  courses-ms:
     container_name: courses-ms
     build:
       context: ./courses-ms
       dockerfile: Dockerfile
     ports:
       - '3001:3001'
-    volumes:
-      - ./courses-ms:/usr/src/app
-      - /usr/src/app/node_modules
     environment:
+      - PORT=3001
       - NODE_ENV=development
-      - DB_HOST=courses_postgres_db
+      - DB_HOST=courses_db
       - DB_PORT=5432
       - DB_USERNAME=postgres
       - DB_PASSWORD=postgres
       - DB_DATABASE=courses_db
       - RABBITMQ_URL=amqp://rabbitmq:5672
       - RABBITMQ_QUEUE=courses_queue
+    networks:
+      - app-network
     depends_on:
       rabbitmq:
         condition: service_healthy
       courses_db:
         condition: service_healthy
-    networks:
-      - app-network
-    restart: unless-stopped
-    command: npm run start:dev
+    restart: unless-stopped  # Importante: reiniciar si falla
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:3001/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   courses_db:
-    container_name: courses_postgres_db
+    container_name: courses_db
     image: postgres:15.3-alpine
+    ports:
+      - '5434:5432'
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -115,29 +143,10 @@ services:
       timeout: 5s
       retries: 5
 
-  postgres:
-    container_name: users_postgres_db
-    image: postgres:15.3-alpine
-    ports:
-      - '5433:5432'
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=users_db
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
 networks:
   app-network:
     driver: bridge
 
 volumes:
-  postgres_data:
+  users_postgres_data:
   courses_postgres_data:

@@ -3,94 +3,40 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { ProxyModule } from './proxy/proxy.module';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { join } from 'path';
+import { ConfigModule } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from "@nestjs/apollo";
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import { DateScalar } from "./common/date.scalar";
-import {ClientsModule, Transport} from "@nestjs/microservices";
-import {GraphQLResolver} from "./proxy/graphql.resolver";
+import { MicroservicesModule } from './config/microservices.config';
+import { join } from 'path';
 
 @Module({
     imports: [
         ConfigModule.forRoot({
             isGlobal: true,
             envFilePath: '.env',
+            cache: true,
+            expandVariables: true,
         }),
-
-        ClientsModule.registerAsync([
-            {
-                name: 'USERS_SERVICE',
-                imports: [ConfigModule],
-                useFactory: async (configService: ConfigService) => ({
-                    transport: Transport.RMQ,
-                    options: {
-                        urls: [configService.get<string>('RABBITMQ_URL')],
-                        queue: configService.get<string>('RABBITMQ_QUEUE'),
-                        queueOptions: {
-                            durable: false
-                        },
-                    },
-                }),
-                inject: [ConfigService],
-            },
-            {
-                name: 'COURSES_SERVICE',
-                imports: [ConfigModule],
-                useFactory: async (configService: ConfigService) => ({
-                    transport: Transport.RMQ,
-                    options: {
-                        urls: [configService.get<string>('RABBITMQ_URL')],
-                        queue: configService.get<string>('COURSES_QUEUE'),
-                        queueOptions: {
-                            durable: false
-                        },
-                    },
-                }),
-                inject: [ConfigService],
-            },
-            {
-                name: 'PAYMENTS_SERVICE',
-                imports: [ConfigModule],
-                useFactory: async (configService: ConfigService) => ({
-                    transport: Transport.RMQ,
-                    options: {
-                        urls: [configService.get<string>('RABBITMQ_URL')],
-                        queue: configService.get<string>('PAYMENTS_QUEUE'),
-                        queueOptions: {
-                            durable: false
-                        },
-                    },
-                }),
-                inject: [ConfigService],
-            },
-        ]),
-
         GraphQLModule.forRoot<ApolloDriverConfig>({
-            context: ({ req }) => ({ req }),
             driver: ApolloDriver,
             autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
             sortSchema: true,
             playground: false,
             plugins: [ApolloServerPluginLandingPageLocalDefault()],
-            buildSchemaOptions: {
-                dateScalarMode: 'timestamp',
-                numberScalarMode: 'float',
-            },
-
+            context: ({ req }) => ({ req }),
             formatError: (error) => ({
                 message: error.message,
-                code: error.extensions?.code || 'SERVER_ERROR',
-                locations: error.locations,
+                code: error.extensions?.code || 'INTERNAL_SERVER_ERROR',
                 path: error.path,
             }),
         }),
-
-        AuthModule,
+        MicroservicesModule, // Asegúrate que este módulo se importe antes de ProxyModule
         ProxyModule,
+        AuthModule,
     ],
     controllers: [AppController],
-    providers: [AppService, DateScalar, GraphQLResolver],
+    providers: [AppService, DateScalar],
 })
 export class AppModule {}

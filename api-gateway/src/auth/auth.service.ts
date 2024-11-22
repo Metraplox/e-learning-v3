@@ -1,9 +1,9 @@
-import { Injectable, Inject, UnauthorizedException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, UnauthorizedException, InternalServerErrorException, BadRequestException, RequestTimeoutException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ClientProxy } from '@nestjs/microservices';
 import { CreateUserInput } from "../proxy/users/dto/create-user.input";
 import { firstValueFrom } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { timeout, catchError } from 'rxjs/operators';
 import * as bcrypt from 'bcrypt';
 import { LoginInput } from './dto/login.input';
 
@@ -19,13 +19,14 @@ export class AuthService {
             const user = await firstValueFrom(
                 this.usersServiceClient.send('users.findByEmailWithPassword', {
                     email: loginInput.email
-                })
+                }).pipe(
+                    timeout(15000)
+                )
             );
 
             if (!user) throw new UnauthorizedException('User not found');
             if (!user.password) throw new UnauthorizedException('Invalid password');
 
-            // Verificar password
             const isPasswordValid = await bcrypt.compare(
                 loginInput.password,
                 user.password
@@ -35,10 +36,7 @@ export class AuthService {
                 throw new UnauthorizedException('Incorrect password');
             }
 
-            // Generar token
             const token = this.generateToken(user);
-
-            // Eliminar password de la respuesta
             const { password, ...userWithoutPassword } = user;
 
             return {
@@ -56,55 +54,48 @@ export class AuthService {
 
     async register(createUserInput: CreateUserInput) {
         try {
-            // 1. Hash del password antes de enviarlo al microservicio
             const hashedPassword = await bcrypt.hash(createUserInput.password, 10);
 
-            // 2. Crear usuario directamente - el microservicio manejará la validación de existencia
             const newUser = await firstValueFrom(
                 this.usersServiceClient.send('users.create', {
                     ...createUserInput,
                     password: hashedPassword
                 }).pipe(
-                    map(user => {
-                        if (!user) throw new InternalServerErrorException('User creation failed');
-                        return user;
-                    }),
-                    catchError(error => {
-                        if (error?.status === 409) {
-                            throw new BadRequestException(error.message || 'User already exists');
-                        }
-                        throw new InternalServerErrorException('Registration failed - Please try again');
-                    })
+                    timeout(15000)
                 )
             );
 
-            // 3. Generar token JWT
-            const token = this.generateToken(newUser);
+            if (!newUser) {
+                throw new InternalServerErrorException('User creation failed');
+            }
 
-            // 4. Eliminar password de la respuesta
+            const token = this.generateToken(newUser);
             const { password, ...userWithoutPassword } = newUser;
 
-            // 5. Retornar respuesta formateada
             return {
                 token,
                 user: userWithoutPassword
             };
 
         } catch (error) {
-            if (error instanceof BadRequestException ||
-                error instanceof UnauthorizedException) {
-                throw error;
+            if (error.name === 'TimeoutError') {
+                throw new RequestTimeoutException('Registration request timed out - please try again');
             }
 
             console.error('Registration error:', {
+                name: error.name,
                 message: error.message,
-                code: error.code,
                 status: error.status
             });
 
-            throw new InternalServerErrorException(
-                'Registration service temporarily unavailable'
-            );
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
+            if (error?.status === 409) {
+                throw new BadRequestException(error.message || 'User already exists');
+            }
+
+            throw new InternalServerErrorException('Registration failed - Please try again');
         }
     }
 
@@ -117,9 +108,8 @@ export class AuthService {
                 username: user.username
             });
         } catch (error) {
+            console.error('Token generation error:', error);
             throw new InternalServerErrorException('Token generation failed');
         }
-
     }
-
 }
