@@ -61,7 +61,24 @@ export class AuthService {
                     ...createUserInput,
                     password: hashedPassword
                 }).pipe(
-                    timeout(15000)
+                    timeout(15000),
+                        catchError(error => {
+                            if (error.name === 'TimeoutError') {
+                                // Verificar si el usuario ya fue creado
+                                return this.usersServiceClient.send('users.findByEmail', {
+                                    email: createUserInput.email
+                                }).pipe(
+                                    timeout(5000),
+                                    catchError(() => {
+                                        throw new RequestTimeoutException('Registration request timed out');
+                                    })
+                                );
+                            }
+                            if (error?.status === 409) {
+                                throw new BadRequestException(error.message || 'User already exists');
+                            }
+                            throw error;
+                        })
                 )
             );
 

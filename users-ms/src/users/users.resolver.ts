@@ -23,7 +23,11 @@ export class UsersResolver {
           message: error.message
         });
       }
-      throw new RpcException('User creation failed');
+      console.error('Error creating user:', error);
+      throw new RpcException({
+        status: 500,
+        message: 'User creation failed'
+      });
     }
   }
 
